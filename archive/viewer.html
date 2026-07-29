@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Офлайн-архив — просмотр</title>
+  <link rel="stylesheet" href="../lib/tokens.css">
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <div id="viewer-app" class="viewer-app">
+    <header class="viewer-toolbar">
+      <div class="viewer-toolbar-start">
+        <button type="button" id="viewer-back" class="viewer-back-btn">← Настройки</button>
+        <div class="viewer-title-wrap">
+          <h1 id="viewer-title" class="viewer-title">Офлайн-страница</h1>
+          <p id="viewer-subtitle" class="viewer-subtitle"></p>
+        </div>
+      </div>
+      <div class="viewer-toolbar-actions">
+        <button type="button" id="viewer-pick-file" class="viewer-action-btn" hidden>Выбрать ZIP</button>
+        <button type="button" id="viewer-open-original" class="viewer-action-btn" hidden>Оригинал</button>
+      </div>
+    </header>
+
+    <div id="viewer-loading" class="viewer-loading">
+      <p class="viewer-loading-text">Загрузка архива…</p>
+    </div>
+
+    <div id="viewer-prompt" class="viewer-prompt" hidden>
+      <div class="viewer-prompt-card">
+        <h2>Выберите архив</h2>
+        <p id="viewer-prompt-desc" class="viewer-prompt-desc">
+          Кэш архива недоступен. Укажите ZIP-файл, скачанный расширением.
+        </p>
+        <label class="viewer-file-label">
+          Выбрать файл .zip
+          <input type="file" id="viewer-file-input" accept=".zip,application/zip" hidden>
+        </label>
+      </div>
+    </div>
+
+    <div id="viewer-error" class="viewer-error" hidden>
+      <div class="viewer-error-card">
+        <p id="viewer-error-text" class="viewer-error-text"></p>
+        <button type="button" id="viewer-retry" class="viewer-action-btn">Попробовать снова</button>
+      </div>
+    </div>
+
+    <iframe id="viewer-frame" class="viewer-frame" title="Офлайн-копия страницы" sandbox="allow-same-origin allow-scripts allow-popups" hidden></iframe>
+  </div>
+
+  <script src="../lib/fflate.min.js"></script>
+  <script src="../lib/archive-bytes.js"></script>
+  <script src="../lib/archive-cache.js"></script>
+  <script src="../lib/archive-viewer.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>

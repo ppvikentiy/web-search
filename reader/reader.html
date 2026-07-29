@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>Читатель</title>
+  <link rel="stylesheet" href="../lib/tokens.css">
+  <link rel="stylesheet" href="../lib/icons.css">
+  <link rel="stylesheet" href="reader.css">
+  <link rel="stylesheet" href="../content/highlights.css">
+  <link rel="stylesheet" href="../content/annotations.css">
+  <link rel="stylesheet" href="../content/dictionary.css">
+</head>
+<body>
+  <div id="ws-reader-progress" class="ws-reader-progress" aria-hidden="true"></div>
+  <div id="ws-reader-app" hidden>
+    <header class="ws-reader-toolbar">
+      <div class="ws-reader-toolbar-start">
+        <button type="button" id="ws-reader-history-back" class="ws-reader-history-btn" title="Предыдущая статья" disabled>
+          <span data-ws-icon="chevronLeft" data-ws-icon-size="14"></span>
+        </button>
+        <button type="button" id="ws-reader-history-forward" class="ws-reader-history-btn" title="Следующая статья" disabled>
+          <span data-ws-icon="chevronRight" data-ws-icon-size="14"></span>
+        </button>
+        <button type="button" id="ws-reader-back" class="ws-reader-back-btn">
+          <span data-ws-icon="arrowLeft" data-ws-icon-size="14"></span>
+          <span>К оригиналу</span>
+        </button>
+        <div id="ws-reader-pill-mount"></div>
+      </div>
+      <span id="ws-reader-site" class="ws-reader-site"></span>
+    </header>
+
+    <main class="ws-reader-main">
+      <article class="ws-reader-article">
+        <header class="ws-reader-header">
+          <h1 id="ws-reader-title"></h1>
+          <p id="ws-reader-meta" class="ws-reader-meta"></p>
+        </header>
+        <div class="ws-reader-content-wrap">
+          <div id="ws-reader-loading" class="ws-reader-loading" hidden>
+            <span class="ws-reader-loading-spinner"></span>
+            <span>Загрузка статьи…</span>
+          </div>
+          <div id="ws-reader-nav-error" class="ws-reader-nav-error" hidden>
+            <p id="ws-reader-nav-error-text"></p>
+            <button type="button" id="ws-reader-nav-open" class="ws-reader-nav-open-btn">Открыть в браузере</button>
+          </div>
+          <div id="ws-reader-content" class="ws-reader-content"></div>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <div id="ws-reader-error" class="ws-reader-error" hidden>
+    <h1>Не удалось открыть читатель</h1>
+    <p id="ws-reader-error-text"></p>
+  </div>
+
+  <script src="../lib/defaults.js"></script>
+  <script src="../lib/icons.js"></script>
+  <script src="../lib/word-boundary.js"></script>
+  <script src="../lib/dom-utils.js"></script>
+  <script src="../lib/user-dictionary.js"></script>
+  <script src="../content/morphology.js"></script>
+  <script src="../content/dom-search.js"></script>
+  <script src="../content/annotations.js"></script>
+  <script src="../lib/citation-formats.js"></script>
+  <script src="../lib/literature-export.js"></script>
+  <script src="../lib/annotation-export.js"></script>
+  <script src="../lib/turndown.bundle.min.js"></script>
+  <script src="../lib/turndown-plugin-gfm.js"></script>
+  <script src="../lib/reader-export.js"></script>
+  <script src="../content/annotation-note.js"></script>
+  <script src="../content/dictionary-popup.js"></script>
+  <script src="../content/reader-extract.js"></script>
+  <script src="reader-pill.js"></script>
+  <script src="reader.js"></script>
+</body>
+</html>

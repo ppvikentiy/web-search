@@ -1,0 +1,133 @@
+.ws-dict-popup {
+
+  position: fixed;
+
+  z-index: 2147483647;
+
+  min-width: 240px;
+
+  max-width: 400px;
+
+  padding: 12px 14px;
+
+  background: var(--ws-ann-popup-bg);
+
+  color: var(--ws-ann-popup-text);
+
+  border-radius: var(--ws-radius-lg);
+
+  corner-shape: squircle;
+
+  box-shadow: var(--ws-ann-popup-shadow);
+
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  font-size: 14px;
+
+  line-height: 1.45;
+
+  pointer-events: auto;
+
+}
+
+
+
+.ws-dict-popup[hidden] {
+
+  display: none !important;
+
+}
+
+
+
+.ws-dict-popup-title {
+
+  font-weight: 600;
+
+  font-size: 15px;
+
+  margin-bottom: 8px;
+
+  color: var(--ws-ann-popup-text);
+
+}
+
+
+
+.ws-dict-popup-meta {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  align-items: center;
+
+  gap: 6px;
+
+  margin-bottom: 8px;
+
+}
+
+
+
+.ws-dict-popup-folder {
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  color: var(--ws-ann-popup-text);
+
+  opacity: 0.75;
+
+}
+
+
+
+.ws-dict-popup-tags {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 4px;
+
+}
+
+
+
+.ws-dict-popup-tag {
+
+  display: inline-flex;
+
+  padding: 2px 8px;
+
+  border-radius: var(--ws-radius-pill);
+
+  background: var(--ws-ann-popup-input-bg);
+
+  color: var(--ws-ann-popup-muted, var(--ws-ann-popup-text));
+
+  font-size: 11px;
+
+}
+
+
+
+.ws-dict-popup-text {
+
+  white-space: pre-wrap;
+
+  word-break: break-word;
+
+  max-height: 240px;
+
+  overflow-y: auto;
+
+  color: var(--ws-ann-popup-muted, var(--ws-ann-popup-text));
+
+  line-height: 1.5;
+
+}
+
+

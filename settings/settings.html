@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Настройки — Поиск на странице</title>
+  <link rel="stylesheet" href="../lib/tokens.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1 class="sidebar-title">Настройки</h1>
+      <nav class="sidebar-nav" role="tablist">
+        <button type="button" class="nav-item active" data-section="search" role="tab" aria-selected="true">
+          <span class="nav-icon">⌕</span>
+          Поиск
+        </button>
+        <button type="button" class="nav-item" data-section="highlight" role="tab" aria-selected="false">
+          <span class="nav-icon">◐</span>
+          Подсветка
+        </button>
+        <button type="button" class="nav-item" data-section="annotations" role="tab" aria-selected="false">
+          <span class="nav-icon">✎</span>
+          Аннотации
+        </button>
+        <button type="button" class="nav-item" data-section="clipper" role="tab" aria-selected="false">
+          <span class="nav-icon">✂</span>
+          Экспорт цитат
+        </button>
+        <button type="button" class="nav-item" data-section="literature" role="tab" aria-selected="false">
+          <span class="nav-icon">📚</span>
+          Экспорт литературы
+        </button>
+        <button type="button" class="nav-item" data-section="morphology" role="tab" aria-selected="false">
+          <span class="nav-icon">Аа</span>
+          Морфология
+        </button>
+        <button type="button" class="nav-item" data-section="dictionary" role="tab" aria-selected="false">
+          <span class="nav-icon">≡</span>
+          Словарь
+        </button>
+        <button type="button" class="nav-item" data-section="scope" role="tab" aria-selected="false">
+          <span class="nav-icon">⊞</span>
+          Область поиска
+        </button>
+        <button type="button" class="nav-item" data-section="exclusions" role="tab" aria-selected="false">
+          <span class="nav-icon">⊘</span>
+          Исключения
+        </button>
+        <button type="button" class="nav-item" data-section="archive" role="tab" aria-selected="false">
+          <span class="nav-icon">⬇</span>
+          Офлайн-архив
+        </button>
+        <button type="button" class="nav-item" data-section="about" role="tab" aria-selected="false">
+          <span class="nav-icon">ℹ</span>
+          О нас
+        </button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <section id="panel-search" class="panel active" role="tabpanel">
+        <header class="panel-header">
+          <h2>Поиск</h2>
+          <p class="panel-desc">Основные и расширенные параметры поиска по странице. Изменения сохраняются автоматически и синхронизируются с окном расширения.</p>
+        </header>
+
+        <p class="section-heading">Основные</p>
+        <div class="card card-grid-3">
+          <label class="row toggle-row">
+            <div class="row-text">
+              <span class="row-label">Учитывать регистр</span>
+              <span class="row-desc">Различать заглавные и строчные буквы. При включении «Дом» и «дом» считаются разными совпадениями.</span>
+            </div>
+            <input type="checkbox" id="set-case" class="toggle">
+          </label>
+          <label class="row toggle-row">
+            <div class="row-text">
+              <span class="row-label">Целое слово</span>
+              <span class="row-desc">Искать только отдельные слова, а не их части. «кот» не найдёт «который» или «апперкот».</span>
+            </div>
+            <input type="checkbox" id="set-whole" class="toggle">
+          </label>
+          <label class="row toggle-row">
+            <div class="row-text">
+              <span class="row-label">Формы слова</span>
+              <span class="row-desc">Учитывать русские словоформы: падежи, число, род. Запрос «кот» найдёт также «кота», «коту», «котами».</span>
+            </div>
+            <input type="checkbox" id="set-morph" class="toggle">
+          </label>
+        </div>
+
+        <p class="section-heading">Расширенные</p>
+        <div class="card">
+          <div class="card-intro">
+            <span class="card-title">Режим фразы</span>
+            <span class="card-desc">Определяет, как обрабатываются запросы из нескольких слов.</span>
+          </div>
+          <div class="segmented" role="group" aria-label="Режим фразы">
+            <label class="segment">
+              <input type="radio" name="phraseMode" value="exact" checked>
+              <div class="segment-text">
+                <span class="segment-label">Точная</span>
+                <span class="segment-desc">Слова должны идти подряд в том же порядке и форме, как в запросе.</span>
+              </div>
+            </label>
+            <label class="segment">
+              <input type="radio" name="phraseMode" value="flexible">
+              <div class="segment-text">
+                <span class="segment-label">Гибкая</span>
+                <span class="segment-desc">Допускаются лишние пробелы и знаки препинания между словами фразы.</span>
+              </div>
+            </label>
+            <label class="segment">
+              <input type="radio" name="phraseMode" value="morph">
+              <div class="segment-text">
+                <span class="segment-label">Морфология каждого слова</span>
+                <span class="segment-desc">К каждому слову фразы применяется морфологический анализ независимо.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-intro">
+            <span class="card-title">Режим совпадения</span>
+            <span class="card-desc">Как сопоставляется текст запроса с текстом на странице.</span>
+          </div>
+          <div class="segmented" role="group" aria-label="Режим совпадения">
+            <label class="segment">
+              <input type="radio" name="matchMode" value="whole" checked>
+              <div class="segment-text">
+                <span class="segment-label">Целое слово</span>
+                <span class="segment-desc">Совпадение только по границам слова — не внутри других слов.</span>
+              </div>
+            </label>
+            <label class="segment">
+              <input type="radio" name="matchMode" value="substring">
+              <div class="segment-text">
+                <span class="segment-label">Подстрока</span>
+                <span class="segment-desc">Искать вхождение текста в любой части слова, включая составные слова.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-highlight" class="panel" role="tabpanel" hidden>
+        <header class="panel-header">
+          <h2>Подсветка</h2>
+          <p class="panel-desc">Настройка цветов выделения найденных совпадений на странице.</p>
+        </header>
+
+        <div class="card card-grid-2">
+          <label class="row color-row">
+            <div class="row-text">
+              <span class="row-label">Цвет подсветки</span>
+              <span class="row-desc">Фон всех найденных совпадений на странице.</span>
+            </div>
+            <input type="color" id="set-highlight-color" value="#ffff00">
+          </label>
+          <label class="row color-row">
+            <div class="row-text">
+              <span class="row-label">Текущее совпадение</span>
+              <span class="row-desc">Выделение активного совпадения, к которому прокручивает навигация.</span>
+            </div>
+            <input type="color" id="set-current-color" value="#ff9632">
+          </label>
+        </div>
+      </section>
+
+      <section id="panel-annotations" class="panel" role="tabpanel" hidden>
+        <header class="panel-header">
+          <h2>Аннотации</h2>
+          <p class="panel-desc">Настройка выделения текста в режиме аннотаций: цвета, стиль и область действия.</p>
+        </header>
+
+        <div class="card card-grid-2">
+          <label class="row color-row">
+            <div class="row-text">
+              <span class="row-label">Цвет аннотации</span>
+              <span class="row-desc">Фон или подчёркивание всех аннотаций на странице.</span>
+            </div>
+            <input type="color" id="set-annotation-color" value="#7bed9f">
+          </label>
+          <label class="row color-row">
+            <div class="row-text">
+              <span class="row-label">Активная аннотация</span>
+              <span class="row-desc">Выделение аннотации, к которой прокручивает навигация в «пилюле».</span>
+            </div>
+            <input type="color" id="set-annotation-active-color" value="#1e90ff">
+          </label>
+        </div>
+
+        <div class="card">
+          <div class="card-intro">
+            <span class="card-title">Стиль выделения</span>
+            <span class="card-desc">Как визуально отображаются аннотации на странице.</span>
+          </div>
+          <div class="segmented" role="group" aria-label="Стиль аннотации">
+            <label class="segment">
+              <input type="radio" name="annotationStyle" value="background" checked>
+              <div class="segment-text">
+                <span class="segment-label">Фон</span>
+                <span class="segment-desc">Маркерный фон, как у поиска.</span>
+              </div>
+            </label>
+            <label class="segment">
+              <input type="radio" name="annotationStyle" value="underline">
+              <div class="segment-text">
+                <span class="segment-label">Подчёркивание</span>
+                <span class="segment-desc">Линия под текстом без фона.</span>
+              </div>
+            </label>
+            <label class="segment">
+              <input type="radio" name="annotationStyle" value="both">
+              <div class="segment-text">
+                <span class="segment-label">Фон и подчёркивание</span>
+                <span class="segment-desc">Комбинация фона и линии под текстом.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-intro">
+            <span class="card-title">Тема всплывающего меню</span>
+            <span class="card-desc">Оформление меню при наведении и клике на аннотацию.</span>
+          </div>
+          <div class="segmented segmented-4" role="group" aria-label="Тема всплывающего меню">
+            <label class="segment">
+              <input type="radio" name="annotationPopupTheme" value="system" checked>
+              <div class="segment-text">
+                <span class="segment-label">Системная</span>
+                <span class="segment-desc">Следует светлой или тёмной теме ОС.</span>
+              </div>
+            </label>
+            <label class="segment">
+              <input type="radio" name="annotationPopupTheme" value="light">
+              <div class="segment-text">
+                <span class="segment-label">Светлая</span>
+                <span class="segment-desc">Всегда светлый фон и тёмный текст.</span>
+              </div>
+            </label>
+            <label class="segment">
+              <input type="radio" name="annotationPopupTheme" value="dark">
+              <div class="segment-text">
+                <span class="segment-label">Тёмная</span>
+                <span class="segment-desc">Всегда тёмный фон и светлый текст.</span>
+              </div>
+            </label>
+            <label class="segment">
+              <input type="radio" name="annotationPopupTheme" value="custom">
+              <div class="segment-text">
+                <span class="segment-label">Своя</span>
+                <span class="segment-desc">Задайте цвета фона и текста вручную.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="card card-grid-2" id="ann-popup-custom-colors" hidden>
+          <label class="row color-row">
+            <div class="row-text">
+              <span class="row-label">Фон меню</span>
+              <span class="row-desc">Цвет фона всплывающего окна.</span>
+            </div>
+            <input type="color" id="set-annotation-popup-bg" value="#1a1a2e">
+          </label>
+          <label class="row color-row">
+            <div class="row-text">
+              <span class="row-label">Текст</span>
+              <span class="row-desc">Основной цвет текста и кнопок.</span>
+            </div>
+            <input type="color" id="set-annotation-popup-text" value="#f0f0f5">
+          </label>
+          <label class="row color-row">
+            <div class="row-text">
+              <span class="row-label">Вторичный текст</span>
+              <span class="row-desc">Подписи и менее заметные элементы.</span>
+            </div>
+            <input type="color" id="set-annotation-popup-muted" value="#a0a0b8">
+          </label>
+        </div>
+
+        <div class="card card-grid-2">
+          <label class="row toggle-row">
+            <div class="row-text">
+              <span class="row-label">Аннотировать в iframe</span>
+              <span class="row-desc">Разрешить создание аннотаций во встроенных фреймах того же домена.</span>
+            </div>
+            <input type="checkbox" id="set-annotation-iframes" class="toggle">
+          </label>
+        </div>
+
+        <div class="cards-row">
+          <div class="card">
+            <label class="field">
+              <span class="field-label">Исключить теги</span>
+              <span class="field-hint">HTML-теги, в которых нельзя создавать аннотации. Через запятую.</span>
+              <input type="text" id="set-annotation-exclude-tags" placeholder="script, style, noscript, textarea">
+            </label>
+          </div>
+          <div class="card">
+            <label class="field">
+              <span class="field-label">Исключить селекторы</span>
+              <span class="field-hint">CSS-селекторы блоков без аннотаций. Каждый с новой строки.</span>
+              <textarea id="set-annotation-exclude-selectors" rows="4" placeholder=".code-block&#10;pre.highlight"></textarea>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-clipper" class="panel" role="tabpanel" hidden>
+        <header class="panel-header">
+          <h2>Экспорт цитат</h2>
+          <p class="panel-desc">Как сохранять цитаты в файл по кнопке «Сохранить» при наведении на аннотацию.</p>
+        </header>
+
+        <div class="card">
+          <div class="card-intro">
+            <span class="card-title">Формат файла</span>
+            <span class="card-desc">Выберите тип файла для скачивания.</span>
+          </div>
+          <div class="clipper-format-row">
+            <label class="clipper-format-option">
+              <input type="radio" name="annotationSaveFormat" value="txt" checked>
+              <span class="clipper-format-card">
+                <span class="clipper-format-name">Текст</span>
+                <span class="clipper-format-ext">.txt</span>
+              </span>
+            </label>
+            <label class="clipper-format-option">
+              <input type="radio" name="annotationSaveFormat" value="md">
+              <span class="clipper-format-card">
+                <span class="clipper-format-name">Markdown</span>
+                <span class="clipper-format-ext">.md</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card" id="clipper-fields-card">
+          <div class="card-intro">
+            <span class="card-title">Что включать в файл</span>
+            <span class="card-desc">Отметьте поля, которые нужно сохранять вместе с цитатой.</span>
+          </div>
+          <label class="row toggle-row clipper-field-row">
+            <div class="row-text">
+              <span class="row-label">Текст цитаты</span>
+              <span class="row-desc">Выделенный фрагмент со страницы. Всегда сохраняется.</span>
+            </div>
+            <input type="checkbox" class="toggle" checked disabled aria-disabled="true">
+          </label>
+          <label class="row toggle-row clipper-field-row">
+            <div class="row-text">
+              <span class="row-label">Заметка</span>
+              <span class="row-desc">Ваш комментарий к цитате, если он есть.</span>
+            </div>
+            <input type="checkbox" id="clipper-field-note" class="toggle">
+          </label>
+          <label class="row toggle-row clipper-field-row">
+            <div class="row-text">
+              <span class="row-label">Ссылка на страницу</span>
+              <span class="row-desc">URL сайта, с которого взята цитата.</span>
+            </div>
+            <input type="checkbox" id="clipper-field-url" class="toggle">
+          </label>
+          <label class="row toggle-row clipper-field-row">
+            <div class="row-text">
+              <span class="row-label">Заголовок страницы</span>
+              <span class="row-desc">Название вкладки браузера.</span>
+            </div>
+            <input type="checkbox" id="clipper-field-title" class="toggle">
+          </label>
+          <label class="row toggle-row clipper-field-row">
+            <div class="row-text">
+              <span class="row-label">Дата сохранения</span>
+              <span class="row-desc">Когда вы нажали «Сохранить».</span>
+            </div>
+            <input type="checkbox" id="clipper-field-date" class="toggle">
+          </label>
+        </div>
+
+        <div class="card">
+          <div class="card-intro">
+            <span class="card-title">Пример</span>
+            <span class="card-desc">Так будет выглядеть сохранённый файл.</span>
+          </div>
+          <pre id="clipper-preview" class="clipper-preview" aria-live="polite"></pre>
+        </div>
+
+        <details class="card clipper-advanced" id="clipper-advanced">
+          <summary class="clipper-advanced-summary">
+            <span class="card-title">Свой шаблон</span>
+            <span class="card-desc">Для продвинутых пользователей: задайте формат вручную.</span>
+          </summary>
+          <div class="clipper-advanced-body">
+            <label class="row toggle-row">
+              <div class="row-text">
+                <span class="row-label">Использовать свой шаблон</span>
+                <span class="row-desc">Отключит автоматическую сборку из полей выше.</span>
+              </div>
+              <input type="checkbox" id="clipper-custom" class="toggle">
+            </label>
+            <label class="field">
+              <span class="field-label">Шаблон</span>
+              <span class="field-hint">Переменные: {text}, {note}, {url}, {title}, {date}</span>
+              <textarea id="set-annotation-save-template" rows="6" disabled placeholder="{text}&#10;&#10;Источник: {url}&#10;Дата сохранения: {date}"></textarea>
+            </label>
+          </div>
+        </details>
+      </section>
+
+      <section id="panel-literature" class="panel" role="tabpanel" hidden>
+        <header class="panel-header">
+          <h2>Экспорт литературы</h2>
+          <p class="panel-desc">Формат библиографической ссылки на источник. Используется кнопками «Скопировать библиографическую ссылку» и «Сохранить как литературу» при наведении на аннотацию. Не влияет на экспорт цитат.</p>
+        </header>
+
+        <div class="card">
+          <div class="card-intro">
+            <span class="card-title">Стиль цитирования</span>
+            <span class="card-desc">Выберите формат библиографической записи для веб-страниц без указания автора.</span>
+          </div>
+          <div class="clipper-format-row literature-preset-row" role="radiogroup" aria-label="Стиль цитирования">
+            <label class="clipper-format-option">
+              <input type="radio" name="literatureCitationPreset" value="gost" checked>
+              <span class="clipper-format-card">
+                <span class="clipper-format-name">ГОСТ</span>
+                <span class="clipper-format-ext">электронный ресурс</span>
+              </span>
+            </label>
+            <label class="clipper-format-option">
+              <input type="radio" name="literatureCitationPreset" value="apa7">
+              <span class="clipper-format-card">
+                <span class="clipper-format-name">APA 7</span>
+                <span class="clipper-format-ext">Retrieved from</span>
+              </span>
+            </label>
+            <label class="clipper-format-option">
+              <input type="radio" name="literatureCitationPreset" value="mla9">
+              <span class="clipper-format-card">
+                <span class="clipper-format-name">MLA 9</span>
+                <span class="clipper-format-ext">Works Cited</span>
+              </span>
+            </label>
+            <label class="clipper-format-option">
+              <input type="radio" name="literatureCitationPreset" value="chicago">
+              <span class="clipper-format-card">
+                <span class="clipper-format-name">Chicago</span>
+                <span class="clipper-format-ext">footnotes</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-intro">
+            <span class="card-title">Пример</span>
+            <span class="card-desc">Так будет выглядеть библиографическая запись источника.</span>
+          </div>
+          <pre id="literature-preview" class="clipper-preview" aria-live="polite"></pre>
+        </div>
+      </section>
+
+      <section id="panel-morphology" class="panel" role="tabpanel" hidden>
+        <header class="panel-header">
+          <h2>Морфология</h2>
+          <p class="panel-desc">Параметры морфологического анализа русских словоформ. Работает при включённой опции «Формы слова».</p>
+        </header>
+
+        <div class="card">
+          <div class="card-intro">
+            <span class="card-title">Глубина анализа</span>
+            <span class="card-desc">Объём словаря и число генерируемых словоформ для каждого слова.</span>
+          </div>
+          <div class="segmented" role="group" aria-label="Глубина морфологии">
+            <label class="segment">
+              <input type="radio" name="morphDepth" value="basic" checked>
+              <div class="segment-text">
+                <span class="segment-label">Базовая</span>
+                <span class="segment-desc">Частые падежи и числа. Быстрее работает, подходит для большинства страниц.</span>
+              </div>
+            </label>
+            <label class="segment">
+              <input type="radio" name="morphDepth" value="extended">
+              <div class="segment-text">
+                <span class="segment-label">Расширенная</span>
+                <span class="segment-desc">Больше редких и архаичных форм. Медленнее, но находит больше вариантов.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-dictionary" class="panel" role="tabpanel" hidden>
+        <header class="panel-header">
+          <h2>Словарь</h2>
+          <p class="panel-desc">Ваши слова и пояснения. Выделите слово на странице или в читателе, нажмите правой кнопкой и выберите «Найти в словаре».</p>
+        </header>
+
+        <div class="dict-toolbar card">
+          <div class="dict-toolbar-actions">
+            <button type="button" id="dict-export-btn" class="dict-toolbar-btn">Экспорт JSON</button>
+            <button type="button" id="dict-import-btn" class="dict-toolbar-btn">Импорт JSON</button>
+            <input type="file" id="dict-import-file" accept=".json,application/json" hidden>
+          </div>
+          <p id="dict-import-status" class="dict-import-status" hidden></p>
+        </div>
+
+        <div class="dict-layout">
+          <aside class="dict-folders card">
+            <div class="dict-folders-header">
+              <span class="card-title">Папки</span>
+              <button type="button" id="dict-add-group-btn" class="dict-folder-add-btn" title="Новая папка">+</button>
+            </div>
+            <div id="dict-group-list" class="dict-group-list"></div>
+          </aside>
+
+          <div class="dict-main">
+            <div class="dict-filters card">
+              <label class="dict-filter-field dict-filter-search">
+                <span class="field-label">Поиск по словарю</span>
+                <input type="search" id="dict-search" placeholder="Слово, описание или тег…" autocomplete="off">
+              </label>
+              <label class="dict-filter-field">
+                <span class="field-label">Фильтр по тегу</span>
+                <select id="dict-filter-tag">
+                  <option value="">Все теги</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="card">
+              <div class="card-intro">
+                <span class="card-title">Добавить слово</span>
+                <span class="card-desc">Одно слово без пробелов. Можно указать дополнительные формы, если морфология их не находит.</span>
+              </div>
+              <div class="dict-add-form">
+                <label class="field">
+                  <span class="field-label">Папка</span>
+                  <select id="dict-add-group"></select>
+                </label>
+                <label class="field">
+                  <span class="field-label">Слово</span>
+                  <input type="text" id="dict-add-word" placeholder="Например: гомозиготный" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span class="field-label">Другие формы</span>
+                  <span class="field-hint">Необязательно. Через запятую: род, число и другие варианты написания.</span>
+                  <input type="text" id="dict-add-forms" placeholder="гомозиготная, гомозиготное" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span class="field-label">Теги</span>
+                  <span class="field-hint">Необязательно. Через запятую: биология, экзамен</span>
+                  <input type="text" id="dict-add-tags" placeholder="биология, экзамен" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span class="field-label">Описание</span>
+                  <textarea id="dict-add-desc" rows="3" placeholder="Что это значит или зачем нужно"></textarea>
+                </label>
+                <p id="dict-form-error" class="dict-form-error" hidden></p>
+                <button type="button" id="dict-add-btn" class="dict-add-btn">Добавить</button>
+              </div>
+            </div>
+
+            <p class="section-heading">Записи</p>
+            <div id="dict-list" class="dict-list"></div>
+            <p id="dict-empty" class="dict-empty">Словарь пуст. Добавьте первое слово выше.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-scope" class="panel" role="tabpanel" hidden>
+        <header class="panel-header">
+          <h2>Область поиска</h2>
+          <p class="panel-desc">Укажите, в каких частях DOM-дерева страницы выполнять поиск.</p>
+        </header>
+
+        <div class="card card-grid-2">
+          <label class="row toggle-row">
+            <div class="row-text">
+              <span class="row-label">Искать в iframe</span>
+              <span class="row-desc">Включить поиск во встроенных фреймах. Может замедлить работу на страницах с большим числом iframe.</span>
+            </div>
+            <input type="checkbox" id="set-iframes" class="toggle">
+          </label>
+          <label class="row toggle-row">
+            <div class="row-text">
+              <span class="row-label">Искать в Shadow DOM</span>
+              <span class="row-desc">Искать внутри изолированных веб-компонентов. Нужно для сайтов на Lit, Shoelace и подобных фреймворках.</span>
+            </div>
+            <input type="checkbox" id="set-shadow" class="toggle">
+          </label>
+        </div>
+      </section>
+
+      <section id="panel-exclusions" class="panel" role="tabpanel" hidden>
+        <header class="panel-header">
+          <h2>Исключения</h2>
+          <p class="panel-desc">Элементы страницы, которые будут пропущены при обходе DOM. Полезно для кода, скриптов и служебных блоков.</p>
+        </header>
+
+        <div class="cards-row">
+          <div class="card">
+            <label class="field">
+              <span class="field-label">Исключить теги</span>
+              <span class="field-hint">HTML-теги, содержимое которых не участвует в поиске. Указывайте через запятую, без угловых скобок.</span>
+              <input type="text" id="set-exclude-tags" placeholder="script, style, noscript, textarea">
+            </label>
+          </div>
+
+          <div class="card">
+            <label class="field">
+              <span class="field-label">Исключить селекторы</span>
+              <span class="field-hint">CSS-селекторы блоков, которые нужно пропустить. Каждый селектор — с новой строки. Например: .hljs, #comments, [data-code].</span>
+              <textarea id="set-exclude-selectors" rows="4" placeholder=".code-block&#10;pre.highlight"></textarea>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-archive" class="panel" role="tabpanel" hidden>
+        <header class="panel-header panel-header-with-action">
+          <div class="panel-header-main">
+            <h2>Офлайн-архив</h2>
+            <p class="panel-desc">Страница сохраняется в ZIP-архив и скачивается на диск. Укажите ссылку для сохранения или откройте ранее скачанный ZIP-файл для просмотра в браузере.</p>
+          </div>
+          <button type="button" id="archive-open-btn" class="dict-add-btn archive-header-open-btn">Открыть</button>
+        </header>
+
+        <div class="card">
+          <div class="row row-actions">
+            <div class="row-text">
+              <span class="row-label">Сохранить страницу по ссылке</span>
+              <span class="row-desc">Перед сохранением страница прокручивается до конца, чтобы подгрузить lazy-изображения.</span>
+            </div>
+            <button type="button" id="archive-save-current" class="dict-add-btn">Сохранить офлайн</button>
+          </div>
+          <p id="archive-stats" class="archive-stats"></p>
+        </div>
+
+        <div class="archive-journal-header">
+          <p class="section-heading archive-journal-heading">Журнал сохранений</p>
+          <button type="button" id="archive-clear-journal" class="btn-text">Очистить журнал</button>
+        </div>
+        <div id="archive-list" class="archive-list"></div>
+        <p id="archive-empty" class="archive-empty" hidden>Нет сохранённых страниц в журнале.</p>
+      </section>
+
+      <section id="panel-about" class="panel" role="tabpanel" hidden>
+        <header class="panel-header">
+          <h2 id="about-title">О нас</h2>
+          <p id="about-desc" class="panel-desc">Версия расширения, лицензия и наша миссия.</p>
+        </header>
+
+        <div class="card about-meta-card">
+          <div class="about-meta-row">
+            <span id="about-version-label" class="about-meta-label">Версия</span>
+            <span id="about-version" class="about-meta-value">—</span>
+          </div>
+          <div class="about-meta-row">
+            <span id="about-license-label" class="about-meta-label">Лицензия</span>
+            <span class="about-meta-value">
+              <a id="about-license-link" href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GPLv3</a>
+            </span>
+          </div>
+        </div>
+
+        <div class="card about-mission-card">
+          <div class="card-intro about-lang-intro">
+            <div>
+              <span id="about-mission-title" class="card-title">Миссия</span>
+              <span id="about-mission-desc" class="card-desc">Текст доступен на трёх языках.</span>
+            </div>
+            <div class="about-lang-switch" role="group" aria-label="Язык текста">
+              <button type="button" class="about-lang-btn active" data-about-lang="ru" aria-pressed="true">RU</button>
+              <button type="button" class="about-lang-btn" data-about-lang="en" aria-pressed="false">EN</button>
+              <button type="button" class="about-lang-btn" data-about-lang="uk" aria-pressed="false">UK</button>
+            </div>
+          </div>
+          <div id="about-mission-text" class="about-mission-text" lang="ru"></div>
+        </div>
+      </section>
+
+      <footer class="content-footer">
+        <p id="save-status" class="save-status" aria-live="polite"></p>
+        <button type="button" id="btn-reset" class="btn-text">Сбросить настройки</button>
+      </footer>
+    </main>
+  </div>
+
+  <div id="archive-save-modal" class="archive-modal" hidden role="dialog" aria-modal="true" aria-labelledby="archive-save-title">
+    <div class="archive-modal-backdrop" data-archive-modal-close="save"></div>
+    <div class="archive-modal-card">
+      <h3 id="archive-save-title" class="archive-modal-title">Сохранить страницу офлайн</h3>
+      <p class="archive-modal-desc">Вставьте ссылку на страницу — она будет сохранена в ZIP и скачана на диск.</p>
+      <label class="archive-modal-field">
+        <span class="archive-modal-label">Адрес страницы</span>
+        <input type="url" id="archive-save-url" class="archive-modal-input" placeholder="https://example.com/page" autocomplete="url">
+      </label>
+      <p id="archive-save-error" class="archive-modal-error" hidden></p>
+      <div class="archive-modal-actions">
+        <button type="button" id="archive-save-cancel" class="btn-text">Отмена</button>
+        <button type="button" id="archive-save-submit" class="dict-add-btn">Сохранить</button>
+      </div>
+      <div id="archive-save-progress-wrap" class="archive-modal-progress-wrap" hidden>
+        <p id="archive-save-progress-label" class="archive-modal-progress-label">Загрузка страницы…</p>
+        <div class="archive-progress-track">
+          <div id="archive-save-progress-bar" class="archive-progress-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="archive-open-modal" class="archive-modal" hidden role="dialog" aria-modal="true" aria-labelledby="archive-open-title">
+    <div class="archive-modal-backdrop" data-archive-modal-close="open"></div>
+    <div class="archive-modal-card">
+      <h3 id="archive-open-title" class="archive-modal-title">Открыть офлайн-архив</h3>
+      <p class="archive-modal-desc">Выберите ZIP-файл, скачанный расширением, или перетащите его в область ниже.</p>
+      <div id="archive-dropzone" class="archive-dropzone" tabindex="0">
+        <p class="archive-dropzone-text">Перетащите .zip сюда или <button type="button" id="archive-open-pick" class="archive-dropzone-link">выберите файл</button></p>
+        <p id="archive-open-filename" class="archive-open-filename" hidden></p>
+        <input type="file" id="archive-open-file" accept=".zip,application/zip" hidden>
+      </div>
+      <p id="archive-open-error" class="archive-modal-error" hidden></p>
+      <div class="archive-modal-actions">
+        <button type="button" id="archive-open-cancel" class="btn-text">Отмена</button>
+        <button type="button" id="archive-open-submit" class="dict-add-btn" disabled>Открыть</button>
+      </div>
+      <div id="archive-open-progress-wrap" class="archive-modal-progress-wrap" hidden>
+        <p id="archive-open-progress-label" class="archive-modal-progress-label">Открытие архива…</p>
+        <div class="archive-progress-track">
+          <div id="archive-open-progress-bar" class="archive-progress-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../lib/defaults.js"></script>
+  <script src="../lib/citation-formats.js"></script>
+  <script src="../lib/literature-export.js"></script>
+  <script src="../lib/archive-bytes.js"></script>
+  <script src="../lib/archive-cache.js"></script>
+  <script src="../content/morphology.js"></script>
+  <script src="../lib/user-dictionary.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Поиск слов на странице",
+  "description": "Поиск слов и фраз на странице с русской морфологией, подсветкой и навигацией",
+  "version": "1.0.3",
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus", "tabs", "offscreen", "downloads"],
+  "host_permissions": ["<all_urls>"],
+  "options_ui": {
+    "page": "settings/settings.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Поиск слов на странице",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["content/morphology-dict.json"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

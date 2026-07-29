@@ -1,0 +1,470 @@
+:root {
+  --ws-annotation-color: #7bed9f;
+  --ws-annotation-active-color: #1e90ff;
+
+  --ws-radius-xs: 6px;
+  --ws-radius-sm: 10px;
+  --ws-radius-md: 14px;
+  --ws-radius-lg: 18px;
+  --ws-radius-pill: 999px;
+
+  --ws-ann-popup-bg: #ffffff;
+  --ws-ann-popup-text: #1d1d1f;
+  --ws-ann-popup-muted: #6e6e73;
+  --ws-ann-popup-border: rgba(0, 0, 0, 0.1);
+  --ws-ann-popup-shadow: 0 6px 28px rgba(0, 0, 0, 0.16);
+  --ws-ann-popup-input-bg: rgba(0, 0, 0, 0.04);
+  --ws-ann-popup-input-border: rgba(0, 0, 0, 0.12);
+  --ws-ann-popup-btn-hover: rgba(0, 0, 0, 0.06);
+  --ws-ann-popup-btn-primary-bg: rgba(0, 0, 0, 0.08);
+  --ws-ann-popup-btn-primary-hover: rgba(0, 0, 0, 0.12);
+  --ws-ann-popup-btn-danger-hover: rgba(255, 59, 48, 0.12);
+  --ws-ann-popup-btn-danger-text: #ff3b30;
+  --ws-ann-popup-focus: rgba(0, 122, 255, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-ws-ann-popup-theme="light"]):not([data-ws-ann-popup-theme="custom"]) {
+    --ws-ann-popup-bg: #1a1a2e;
+    --ws-ann-popup-text: #f0f0f5;
+    --ws-ann-popup-muted: #a0a0b8;
+    --ws-ann-popup-border: rgba(255, 255, 255, 0.1);
+    --ws-ann-popup-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);
+    --ws-ann-popup-input-bg: rgba(0, 0, 0, 0.25);
+    --ws-ann-popup-input-border: rgba(255, 255, 255, 0.15);
+    --ws-ann-popup-btn-hover: rgba(255, 255, 255, 0.1);
+    --ws-ann-popup-btn-primary-bg: rgba(255, 255, 255, 0.1);
+    --ws-ann-popup-btn-primary-hover: rgba(255, 255, 255, 0.18);
+    --ws-ann-popup-btn-danger-hover: rgba(255, 80, 80, 0.25);
+    --ws-ann-popup-btn-danger-text: #ffb4b4;
+    --ws-ann-popup-focus: rgba(255, 255, 255, 0.35);
+  }
+}
+
+:root[data-ws-ann-popup-theme="light"] {
+  --ws-ann-popup-bg: #ffffff;
+  --ws-ann-popup-text: #1d1d1f;
+  --ws-ann-popup-muted: #6e6e73;
+  --ws-ann-popup-border: rgba(0, 0, 0, 0.1);
+  --ws-ann-popup-shadow: 0 6px 28px rgba(0, 0, 0, 0.16);
+  --ws-ann-popup-input-bg: rgba(0, 0, 0, 0.04);
+  --ws-ann-popup-input-border: rgba(0, 0, 0, 0.12);
+  --ws-ann-popup-btn-hover: rgba(0, 0, 0, 0.06);
+  --ws-ann-popup-btn-primary-bg: rgba(0, 0, 0, 0.08);
+  --ws-ann-popup-btn-primary-hover: rgba(0, 0, 0, 0.12);
+  --ws-ann-popup-btn-danger-hover: rgba(255, 59, 48, 0.12);
+  --ws-ann-popup-btn-danger-text: #ff3b30;
+  --ws-ann-popup-focus: rgba(0, 122, 255, 0.45);
+}
+
+:root[data-ws-ann-popup-theme="dark"] {
+  --ws-ann-popup-bg: #1a1a2e;
+  --ws-ann-popup-text: #f0f0f5;
+  --ws-ann-popup-muted: #a0a0b8;
+  --ws-ann-popup-border: rgba(255, 255, 255, 0.1);
+  --ws-ann-popup-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);
+  --ws-ann-popup-input-bg: rgba(0, 0, 0, 0.25);
+  --ws-ann-popup-input-border: rgba(255, 255, 255, 0.15);
+  --ws-ann-popup-btn-hover: rgba(255, 255, 255, 0.1);
+  --ws-ann-popup-btn-primary-bg: rgba(255, 255, 255, 0.1);
+  --ws-ann-popup-btn-primary-hover: rgba(255, 255, 255, 0.18);
+  --ws-ann-popup-btn-danger-hover: rgba(255, 80, 80, 0.25);
+  --ws-ann-popup-btn-danger-text: #ffb4b4;
+  --ws-ann-popup-focus: rgba(255, 255, 255, 0.35);
+}
+mark.ws-annotation {
+  color: inherit !important;
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 0;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Hide annotation marks when mode is off (before DOM unwrap or if marks linger). */
+:root[data-ws-annotation-mode="off"] mark.ws-annotation {
+  background-color: transparent !important;
+  text-decoration: none !important;
+  border-bottom: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  cursor: inherit !important;
+}
+
+:root[data-ws-annotation-mode="off"] mark.ws-annotation.ws-annotation-active {
+  background-color: transparent !important;
+}
+
+:root[data-ws-annotation-style="background"] mark.ws-annotation,
+:root:not([data-ws-annotation-style]) mark.ws-annotation {
+  background-color: var(--ws-annotation-color) !important;
+  text-decoration: none !important;
+}
+
+:root[data-ws-annotation-style="underline"] mark.ws-annotation {
+  background-color: transparent !important;
+  text-decoration: underline !important;
+  text-decoration-color: var(--ws-annotation-color) !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 2px !important;
+}
+
+:root[data-ws-annotation-style="both"] mark.ws-annotation {
+  background-color: var(--ws-annotation-color) !important;
+  text-decoration: underline !important;
+  text-decoration-color: var(--ws-annotation-color) !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 2px !important;
+}
+
+mark.ws-annotation.ws-annotation-active {
+  outline: 2px solid var(--ws-annotation-active-color) !important;
+  outline-offset: 1px;
+}
+
+:root[data-ws-annotation-style="background"] mark.ws-annotation.ws-annotation-active,
+:root:not([data-ws-annotation-style]) mark.ws-annotation.ws-annotation-active {
+  background-color: var(--ws-annotation-active-color) !important;
+}
+
+:root[data-ws-annotation-style="underline"] mark.ws-annotation.ws-annotation-active {
+  text-decoration-color: var(--ws-annotation-active-color) !important;
+}
+
+:root[data-ws-annotation-style="both"] mark.ws-annotation.ws-annotation-active {
+  background-color: var(--ws-annotation-active-color) !important;
+  text-decoration-color: var(--ws-annotation-active-color) !important;
+}
+
+.ws-pill-list-item-missing .ws-pill-list-text {
+  opacity: 0.65;
+  font-style: italic;
+}
+
+.ws-pill-list-missing {
+  margin-left: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+#ws-annotation-pill {
+  position: fixed;
+  z-index: 2147483646;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-width: 200px;
+  padding: 0;
+  background: #1a1a2e;
+  color: #f0f0f5;
+  border-radius: var(--ws-radius-lg, 18px);
+  corner-shape: squircle;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1;
+  user-select: none;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+#ws-annotation-pill .ws-pill-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+#ws-annotation-pill[hidden] {
+  display: none !important;
+}
+
+#ws-annotation-pill .ws-pill-drag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #a0a0b8;
+  cursor: grab;
+  line-height: 1;
+}
+
+#ws-annotation-pill .ws-pill-drag:active {
+  cursor: grabbing;
+}
+
+#ws-annotation-pill .ws-pill-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0f0f5;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#ws-annotation-pill .ws-pill-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+#ws-annotation-pill .ws-pill-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#ws-annotation-pill .ws-pill-close:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.35);
+}
+
+#ws-annotation-pill .ws-pill-counter {
+  min-width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+#ws-annotation-pill .ws-pill-toggle svg {
+  transition: transform 0.15s ease;
+}
+
+#ws-annotation-pill .ws-pill-toggle-open svg {
+  transform: rotate(180deg);
+}
+
+#ws-annotation-pill .ws-pill-panel {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+#ws-annotation-pill .ws-pill-panel[hidden] {
+  display: none !important;
+}
+
+#ws-annotation-pill .ws-pill-list {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+#ws-annotation-pill .ws-pill-list-empty {
+  padding: 10px 12px;
+  color: #a0a0b8;
+  font-size: 12px;
+  text-align: center;
+}
+
+#ws-annotation-pill .ws-pill-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--ws-radius-sm, 10px);
+  corner-shape: squircle;
+  background: transparent;
+  color: #f0f0f5;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#ws-annotation-pill .ws-pill-list-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#ws-annotation-pill .ws-pill-list-item-active {
+  background: rgba(30, 144, 255, 0.25);
+}
+
+#ws-annotation-pill .ws-pill-list-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#ws-annotation-pill .ws-pill-list-note,
+#ws-annotation-pill .ws-pill-list-missing {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.ws-ann-menu,
+.ws-ann-popover {
+  position: fixed;
+  z-index: 2147483647;
+  min-width: 260px;
+  max-width: 400px;
+  padding: 10px;
+  background: var(--ws-ann-popup-bg);
+  color: var(--ws-ann-popup-text);
+  border-radius: var(--ws-radius-lg, 18px);
+  corner-shape: squircle;
+  box-shadow: var(--ws-ann-popup-shadow);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  pointer-events: auto;
+  overflow: hidden;
+}
+.ws-ann-menu[hidden],
+.ws-ann-popover[hidden] {
+  display: none !important;
+}
+
+.ws-ann-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ws-ann-menu-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--ws-radius-sm, 10px);
+  corner-shape: squircle;
+  background: transparent;
+  color: var(--ws-ann-popup-text);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ws-ann-menu-btn:hover {
+  background: var(--ws-ann-popup-btn-hover);
+}
+
+.ws-ann-menu-btn-danger:hover {
+  background: var(--ws-ann-popup-btn-danger-hover);
+  color: var(--ws-ann-popup-btn-danger-text);
+}
+
+.ws-ann-note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 280px;
+}
+
+.ws-ann-note-textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid var(--ws-ann-popup-input-border);
+  border-radius: var(--ws-radius-sm, 10px);
+  corner-shape: squircle;
+  background: var(--ws-ann-popup-input-bg);
+  color: var(--ws-ann-popup-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.ws-ann-note-textarea:focus {
+  outline: 2px solid var(--ws-ann-popup-focus);
+  outline-offset: 0;
+}
+
+.ws-ann-note-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ws-ann-note-btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--ws-radius-sm, 10px);
+  corner-shape: squircle;
+  background: var(--ws-ann-popup-btn-hover);
+  color: var(--ws-ann-popup-text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ws-ann-note-btn:hover {
+  background: var(--ws-ann-popup-btn-primary-hover);
+}
+
+.ws-ann-note-btn-primary {
+  background: var(--ws-ann-popup-btn-primary-bg);
+}
+
+.ws-ann-note-btn-primary:hover {
+  background: var(--ws-ann-popup-btn-primary-hover);
+}
+
+.ws-ann-popover-text {
+  padding: 6px 8px 10px;
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ws-ann-popup-text);
+  border-bottom: 1px solid var(--ws-ann-popup-border);
+}
+
+.ws-ann-popover-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ws-ann-popover-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--ws-radius-sm, 10px);
+  corner-shape: squircle;
+  background: transparent;
+  color: var(--ws-ann-popup-text);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ws-ann-popover-btn:hover {
+  background: var(--ws-ann-popup-btn-hover);
+}
+
+.ws-ann-popover-btn-danger:hover {
+  background: var(--ws-ann-popup-btn-danger-hover);
+  color: var(--ws-ann-popup-btn-danger-text);
+}
+
+.ws-ann-popover .ws-ann-note-editor {
+  min-width: 260px;
+}

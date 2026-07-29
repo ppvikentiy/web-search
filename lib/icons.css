@@ -1,0 +1,15 @@
+.ws-icon {
+  display: block;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+button .ws-icon,
+.ws-icon-btn .ws-icon {
+  display: block;
+}
+
+.ws-icon-inline {
+  display: inline-block;
+  vertical-align: -0.15em;
+}

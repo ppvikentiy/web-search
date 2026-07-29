@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Поиск на странице</title>
+
+  <link rel="stylesheet" href="../lib/tokens.css">
+  <link rel="stylesheet" href="../lib/icons.css">
+  <link rel="stylesheet" href="popup.css">
+
+</head>
+
+<body>
+
+  <header class="header">
+
+    <h1>Поиск</h1>
+
+    <div class="header-actions">
+
+    <button type="button" id="btn-qr-page" class="btn-icon" title="QR-код страницы" aria-label="QR-код страницы" data-ws-icon="qrCode" data-ws-icon-size="16"></button>
+
+    <button type="button" id="btn-reader" class="btn-icon" title="Открыть в читателе" aria-label="Открыть в читателе" data-ws-icon="bookOpen" data-ws-icon-size="16"></button>
+
+    <button type="button" id="btn-reader-exit" class="btn-icon" title="К оригиналу" aria-label="К оригиналу" hidden data-ws-icon="arrowLeft" data-ws-icon-size="16"></button>
+
+    <button type="button" id="btn-archive-offline" class="btn-icon" title="Сохранить страницу офлайн (.zip)" aria-label="Сохранить страницу офлайн" data-ws-icon="download" data-ws-icon-size="16"></button>
+
+    <button type="button" id="btn-dock" class="btn-icon" title="Закрепить у края экрана" aria-label="Закрепить у края экрана" data-ws-icon="panelRight" data-ws-icon-size="16"></button>
+
+    <button type="button" id="btn-settings" class="btn-icon" title="Настройки" aria-label="Настройки" data-ws-icon="settings" data-ws-icon-size="16"></button>
+
+    </div>
+
+  </header>
+
+
+
+  <div class="page-info-card">
+
+    <div class="page-info-row">
+
+      <span class="page-info-label">Сайт</span>
+
+      <span id="page-site" class="page-info-value">—</span>
+
+    </div>
+
+    <div class="page-info-row">
+
+      <span class="page-info-label">Заголовок</span>
+
+      <span id="page-title" class="page-info-value">—</span>
+
+    </div>
+
+  </div>
+
+
+
+  <div id="qr-panel" class="qr-panel" hidden>
+
+    <img id="qr-image" class="qr-image" alt="QR-код страницы" width="180" height="180">
+
+    <p id="qr-url" class="qr-url"></p>
+
+    <div class="qr-actions">
+
+      <button type="button" id="btn-qr-copy" class="btn-qr-action">Скопировать ссылку</button>
+
+      <button type="button" id="btn-qr-download" class="btn-qr-action btn-qr-action-primary">Скачать PNG</button>
+
+    </div>
+
+  </div>
+
+
+
+  <div class="search-row">
+
+    <div class="search-input-wrap">
+
+      <span class="search-field-icon" aria-hidden="true" data-ws-icon="search" data-ws-icon-size="14"></span>
+
+      <input type="text" id="query" placeholder="Слово или фраза…" autocomplete="off" spellcheck="false">
+
+      <button type="button" id="btn-clear" class="btn-clear" hidden aria-label="Очистить поиск" title="Очистить" data-ws-icon="x" data-ws-icon-size="12"></button>
+
+    </div>
+
+    <button type="button" id="btn-search" class="btn-primary">Найти</button>
+
+  </div>
+
+
+
+  <div class="selection-row">
+
+    <button type="button" id="btn-find-selection" class="btn-selection" title="Искать выделенный на странице текст">
+
+      <span data-ws-icon="textSelect" data-ws-icon-size="14"></span>
+
+      <span>Найти выделенное</span>
+
+    </button>
+
+  </div>
+
+
+
+  <div class="options-card">
+
+    <label class="option-row">
+
+      <span class="option-label">Учитывать регистр</span>
+
+      <input type="checkbox" id="opt-case" class="toggle">
+
+    </label>
+
+    <label class="option-row">
+
+      <span class="option-label">Целое слово</span>
+
+      <input type="checkbox" id="opt-whole" class="toggle">
+
+    </label>
+
+    <label class="option-row">
+
+      <span class="option-label">Формы слова</span>
+
+      <input type="checkbox" id="opt-morph" class="toggle">
+
+    </label>
+
+  </div>
+
+
+
+  <div class="options-card annotation-card">
+
+    <label class="option-row option-row-icon">
+
+      <span class="option-label">
+
+        <span data-ws-icon="highlighter" data-ws-icon-size="14"></span>
+
+        <span>Режим аннотаций</span>
+
+      </span>
+
+      <input type="checkbox" id="opt-annotation-mode" class="toggle">
+
+    </label>
+
+    <p id="annotation-status" class="annotation-status" aria-live="polite"></p>
+
+  </div>
+
+
+
+  <div class="nav-row">
+
+    <button type="button" id="btn-prev" class="btn-nav" disabled aria-label="Предыдущее" data-ws-icon="chevronLeft" data-ws-icon-size="14"></button>
+
+    <span id="counter" class="counter">0 из 0</span>
+
+    <button type="button" id="btn-next" class="btn-nav" disabled aria-label="Следующее" data-ws-icon="chevronRight" data-ws-icon-size="14"></button>
+
+  </div>
+
+
+
+  <p id="status" class="status" aria-live="polite"></p>
+
+
+
+  <script src="../lib/defaults.js"></script>
+
+  <script src="../lib/icons.js"></script>
+
+  <script src="../lib/qrcode.min.js"></script>
+
+  <script src="../lib/qr-utils.js"></script>
+
+  <script src="popup.js"></script>
+
+</body>
+
+</html>
+
+

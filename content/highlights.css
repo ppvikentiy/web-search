@@ -1,0 +1,29 @@
+:root {
+  --ws-highlight-color: #ffff00;
+  --ws-current-highlight-color: #ff9632;
+}
+
+mark.ws-match {
+  background-color: var(--ws-highlight-color) !important;
+  color: inherit !important;
+  padding: 0 1px;
+  border-radius: 2px;
+  position: relative;
+  z-index: 3;
+}
+
+mark.ws-match.ws-current {
+  background-color: var(--ws-current-highlight-color) !important;
+  outline: 2px solid #e65100;
+  outline-offset: 1px;
+}
+
+::highlight(ws-match) {
+  background-color: var(--ws-highlight-color);
+  color: inherit;
+}
+
+::highlight(ws-current-match) {
+  background-color: var(--ws-current-highlight-color);
+  color: inherit;
+}

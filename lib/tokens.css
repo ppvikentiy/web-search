@@ -1,0 +1,133 @@
+:root {
+
+  --ws-bg: #f5f5f7;
+
+  --ws-sidebar-bg: #ebebed;
+
+  --ws-card-bg: #ffffff;
+
+  --ws-text: #1d1d1f;
+
+  --ws-text-secondary: #6e6e73;
+
+  --ws-accent: #007aff;
+
+  --ws-accent-hover: #0066d6;
+
+  --ws-border: rgba(0, 0, 0, 0.08);
+
+  --ws-surface: #f5f5f7;
+
+  --ws-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+  --ws-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+
+
+
+  --ws-radius-xs: 6px;
+
+  --ws-radius-sm: 10px;
+
+  --ws-radius-md: 14px;
+
+  --ws-radius-lg: 18px;
+
+  --ws-radius-pill: 999px;
+
+
+
+  /* Legacy aliases used across extension pages */
+
+  --bg: var(--ws-bg);
+
+  --sidebar-bg: var(--ws-sidebar-bg);
+
+  --card-bg: var(--ws-card-bg);
+
+  --text: var(--ws-text);
+
+  --text-secondary: var(--ws-text-secondary);
+
+  --accent: var(--ws-accent);
+
+  --accent-hover: var(--ws-accent-hover);
+
+  --border: var(--ws-border);
+
+  --surface: var(--ws-surface);
+
+  --shadow: var(--ws-shadow);
+
+  --font: var(--ws-font);
+
+  --radius-lg: var(--ws-radius-lg);
+
+}
+
+
+
+@media (prefers-color-scheme: dark) {
+
+  :root {
+
+    --ws-bg: #1e1e1e;
+
+    --ws-sidebar-bg: #2c2c2e;
+
+    --ws-card-bg: #2c2c2e;
+
+    --ws-text: #f5f5f7;
+
+    --ws-text-secondary: #98989d;
+
+    --ws-border: rgba(255, 255, 255, 0.08);
+
+    --ws-surface: #2c2c2e;
+
+    --ws-shadow: none;
+
+  }
+
+}
+
+
+
+.ws-squircle-xs {
+
+  border-radius: var(--ws-radius-xs);
+
+  corner-shape: squircle;
+
+}
+
+
+
+.ws-squircle-sm {
+
+  border-radius: var(--ws-radius-sm);
+
+  corner-shape: squircle;
+
+}
+
+
+
+.ws-squircle-md {
+
+  border-radius: var(--ws-radius-md);
+
+  corner-shape: squircle;
+
+}
+
+
+
+.ws-squircle-lg {
+
+  border-radius: var(--ws-radius-lg);
+
+  corner-shape: squircle;
+
+}
+
+
