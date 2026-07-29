@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Поиск слов на странице",
   "description": "Поиск слов и фраз на странице с русской морфологией, подсветкой и навигацией",
-  "version": "1.0.3",
+  "version": "1.5.0",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus", "tabs", "offscreen", "downloads"],
   "host_permissions": ["<all_urls>"],
   "options_ui": {
