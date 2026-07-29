@@ -30,7 +30,7 @@ A Chromium-based browser extension (Chrome, Edge, and compatible browsers) for o
 - [Russian morphology](#russian-morphology)
 - [Project structure](#project-structure)
 - [Permissions](#permissions)
-- [Development and tests](#development-and-tests)
+- [Development](#development)
 - [Limitations](#limitations)
 - [Mission](#mission)
 - [License](#license)
@@ -84,7 +84,13 @@ Or download a ZIP from GitHub: **Code → Download ZIP** and extract it.
 4. Select the project folder — the one that contains `manifest.json`.
 5. Optionally pin the icon to the toolbar.
 
-No build is required: the extension is plain JavaScript. The `node_modules` folder is **not** needed to run in the browser (only for tests).
+No build step: the extension is plain JavaScript with no dependencies.
+
+### Publishing to the Store (ZIP / CRX)
+
+The archive should contain only extension files (`manifest.json`, `background/`, `content/`, `popup/`, …). Omit README and other repo metadata if the Store complains.
+
+For CRX: `chrome://extensions` → **Pack extension** → select the folder with `manifest.json`. Keep the `.pem` key for updates.
 
 After code changes, click **Reload** on the extension card.
 
@@ -325,9 +331,6 @@ web-search/
 ├── offscreen/             # Blob URLs and QR decode outside the service worker
 ├── lib/                   # Shared modules and vendored libraries
 ├── icons/                 # Extension icons
-├── assets/                # Extra assets
-├── tests/                 # Node tests
-├── scripts/               # Helper scripts (e.g. make_icons.py)
 ├── LICENSE                # GPLv3
 ├── README.md              # Russian README
 └── README-EN.md           # This file
@@ -344,7 +347,7 @@ web-search/
 | qrcode | QR generation |
 | jsQR | QR recognition |
 
-npm packages are **not** required to run the extension in the browser. `node_modules` is used only when running tests (including jsdom).
+Everything needed is already in the repository; there are no external dependencies.
 
 ---
 
@@ -365,42 +368,12 @@ npm packages are **not** required to run the extension in the browser. `node_mod
 
 ---
 
-## Development and tests
-
-### Requirements for tests
-
-- Node.js (modern LTS)
-- npm
-
-```bash
-npm install
-npm test
-```
-
-`npm test` runs, in order:
-
-1. `tests/reader-export.mjs`
-2. `tests/reader-export-copy.mjs`
-3. `tests/offline-archive.mjs`
-4. `tests/archive-journal.mjs`
-5. `tests/citation-formats.mjs`
-
-Additional (manual):
-
-```bash
-node tests/archive-bytes.mjs
-node tests/reader-images.mjs
-node tests/reader-annotation-scenario.mjs
-```
-
-### Versioning
+## Development
 
 When releasing, update together:
 
 - `version` in `manifest.json`
 - the content-script version constant in `background/background.js` (so reinjection picks up changes)
-
-Icons can be regenerated with `scripts/make_icons.py`.
 
 ---
 
@@ -453,4 +426,4 @@ In short: you may use, study, modify, and redistribute the program under the ter
 
 ### Contributing
 
-Issues and pull requests are welcome at the [GitHub repository](https://github.com/ppvikentiy/web-search). Before opening a PR, run `npm test` and try the main flows on a real page in Chrome or Edge.
+Issues and pull requests are welcome at the [GitHub repository](https://github.com/ppvikentiy/web-search). Before opening a PR, try the main flows on a real page in Chrome or Edge.

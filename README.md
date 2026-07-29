@@ -28,7 +28,7 @@
 - [Русская морфология](#русская-морфология)
 - [Структура проекта](#структура-проекта)
 - [Разрешения](#разрешения)
-- [Разработка и тесты](#разработка-и-тесты)
+- [Разработка](#разработка)
 - [Ограничения](#ограничения)
 - [Миссия](#миссия)
 - [Лицензия](#лицензия)
@@ -82,7 +82,13 @@ cd web-search
 4. Укажите папку проекта — ту, где лежит `manifest.json`.
 5. При желании закрепите иконку на панели инструментов.
 
-Сборка не нужна: расширение — это обычный JavaScript. Папка `node_modules` для работы в браузере **не требуется** (она нужна только для тестов).
+Сборка не нужна: расширение — обычный JavaScript без зависимостей.
+
+### Публикация в Store (ZIP / CRX)
+
+В архив должны попасть только файлы расширения (`manifest.json`, `background/`, `content/`, `popup/`, …). Не включайте README и служебные файлы репозитория, если Store на это жалуется.
+
+Для CRX: `chrome://extensions` → **Упаковать расширение** → укажите папку с `manifest.json`. Ключ `.pem` сохраните для обновлений.
 
 После правок кода нажмите **Обновить** на карточке расширения.
 
@@ -323,9 +329,6 @@ web-search/
 ├── offscreen/             # Blob URL и декодирование QR вне service worker
 ├── lib/                   # Общие модули и вендорные библиотеки
 ├── icons/                 # Иконки расширения
-├── assets/                # Доп. ресурсы
-├── tests/                 # Node-тесты
-├── scripts/               # Вспомогательные скрипты (например, make_icons.py)
 ├── LICENSE                # GPLv3
 ├── README.md              # Этот файл (русский)
 └── README-EN.md           # English README
@@ -342,7 +345,7 @@ web-search/
 | qrcode | Генерация QR |
 | jsQR | Распознавание QR |
 
-Для работы расширения в браузере npm-зависимости **не нужны**. `node_modules` используется только при запуске тестов (в т.ч. jsdom).
+Всё необходимое уже в репозитории: отдельных зависимостей нет.
 
 ---
 
@@ -363,42 +366,12 @@ web-search/
 
 ---
 
-## Разработка и тесты
-
-### Требования для тестов
-
-- Node.js (современная LTS)
-- npm
-
-```bash
-npm install
-npm test
-```
-
-`npm test` последовательно запускает:
-
-1. `tests/reader-export.mjs`
-2. `tests/reader-export-copy.mjs`
-3. `tests/offline-archive.mjs`
-4. `tests/archive-journal.mjs`
-5. `tests/citation-formats.mjs`
-
-Дополнительно (вручную):
-
-```bash
-node tests/archive-bytes.mjs
-node tests/reader-images.mjs
-node tests/reader-annotation-scenario.mjs
-```
-
-### Версионирование
+## Разработка
 
 При выпуске синхронно обновляйте:
 
 - `version` в `manifest.json`
 - константу версии content-скрипта в `background/background.js` (чтобы переинъекция подхватывала изменения)
-
-Иконки можно пересобрать скриптом `scripts/make_icons.py`.
 
 ---
 
@@ -451,4 +424,4 @@ node tests/reader-annotation-scenario.mjs
 
 ### Участие
 
-Issues и pull request’ы приветствуются в [репозитории на GitHub](https://github.com/ppvikentiy/web-search). Перед PR имеет смысл прогнать `npm test` и проверить ключевые сценарии на реальной странице в Chrome или Edge.
+Issues и pull request’ы приветствуются в [репозитории на GitHub](https://github.com/ppvikentiy/web-search). Перед PR имеет смысл проверить ключевые сценарии на реальной странице в Chrome или Edge.
