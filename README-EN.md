@@ -6,7 +6,7 @@ A Chromium-based browser extension (Chrome, Edge, and compatible browsers) for o
 
 **Repository:** [https://github.com/ppvikentiy/web-search](https://github.com/ppvikentiy/web-search)  
 **License:** [GNU General Public License v3.0](LICENSE) ([GPLv3](https://www.gnu.org/licenses/gpl-3.0.html))  
-**Version:** 1.0.3 (Manifest V3)
+**Version:** 1.5.0 (Manifest V3)
 
 **Display name in the browser:** «Поиск слов на странице» (Russian UI by default).
 
