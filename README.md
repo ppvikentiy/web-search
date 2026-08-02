@@ -6,7 +6,7 @@
 
 **Репозиторий:** [https://github.com/ppvikentiy/web-search](https://github.com/ppvikentiy/web-search)  
 **Лицензия:** [GNU General Public License v3.0](LICENSE) ([GPLv3](https://www.gnu.org/licenses/gpl-3.0.html))  
-**Версия:** 1.0.3 (Manifest V3)
+**Версия:** 1.5.0 (Manifest V3)
 
 ---
 
