@@ -2,7 +2,7 @@
  * Reader tab: render extracted article, search, annotations.
  */
 (() => {
-  const CONTENT_SCRIPT_VERSION = '1.0.3';
+  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '1.0.7';
 
   let readerTabId = null;
   let payload = null;
@@ -112,20 +112,30 @@
   }
 
   async function loadSettings() {
-    const stored = await chrome.storage.sync.get(WS_DEFAULTS);
+    const stored = await WSSettingsStorage.get(WS_DEFAULTS);
     state.settings = parseSettings(stored);
     applyReaderAppearance(state.settings);
     return state.settings;
   }
 
   function getSearchOptions(overrides = {}) {
+    const settings = state.settings || {};
+    const has = (key) => Object.prototype.hasOwnProperty.call(overrides, key)
+      && overrides[key] !== undefined;
+
+    const wholeWord = has('wholeWord')
+      ? Boolean(overrides.wholeWord)
+      : has('matchMode')
+        ? overrides.matchMode === 'whole'
+        : Boolean(settings.wholeWord);
+
     return {
-      caseSensitive: overrides.caseSensitive ?? state.options.caseSensitive ?? state.settings.caseSensitive,
-      wholeWord: overrides.wholeWord ?? state.options.wholeWord ?? state.settings.wholeWord,
-      useMorphology: overrides.useMorphology ?? state.options.useMorphology ?? state.settings.useMorphology,
-      phraseMode: overrides.phraseMode ?? state.options.phraseMode ?? state.settings.phraseMode,
-      matchMode: overrides.matchMode ?? state.options.matchMode ?? state.settings.matchMode,
-      morphDepth: state.settings.morphDepth
+      caseSensitive: has('caseSensitive') ? Boolean(overrides.caseSensitive) : (settings.caseSensitive ?? true),
+      wholeWord,
+      useMorphology: has('useMorphology') ? Boolean(overrides.useMorphology) : Boolean(settings.useMorphology),
+      phraseMode: has('phraseMode') ? overrides.phraseMode : (settings.phraseMode || 'exact'),
+      matchMode: wholeWord ? 'whole' : 'substring',
+      morphDepth: settings.morphDepth || 'basic'
     };
   }
 
@@ -234,43 +244,36 @@
   }
 
   function navigate(direction) {
+    const live = state.matches.filter((r) => r.element?.isConnected || r.element?._wsRange);
+    if (live.length) state.matches = live;
+
     if (!state.matches.length) {
       syncReaderPillUI();
       return buildResponse({ resyncHighlight: false });
     }
 
-    let next = state.currentIndex;
-    if (direction === 'NEXT') {
+    let next;
+    if (state.currentIndex < 0 || state.currentIndex >= state.matches.length) {
+      next = direction === 'PREV' ? state.matches.length - 1 : 0;
+    } else if (direction === 'NEXT') {
       next = (state.currentIndex + 1) % state.matches.length;
-    } else if (direction === 'PREV') {
+    } else {
       next = state.currentIndex <= 0 ? state.matches.length - 1 : state.currentIndex - 1;
     }
 
-    const elements = state.matches.map((r) => r.element).filter(Boolean);
+    const elements = state.matches.map((r) => r.element);
     state.currentIndex = WSDomSearch.setCurrentMatch(elements, next, { scroll: true });
     syncReaderPillUI();
     return buildResponse({ resyncHighlight: false });
   }
 
-  function isEditableElement(el) {
-    if (!el || el.nodeType !== 1) return false;
-    const tag = el.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-    if (el.isContentEditable) return true;
-    return Boolean(el.closest?.('[contenteditable="true"]'));
-  }
-
   function onSearchKeydown(e) {
     if (!state.searchActive || !state.matches.length) return;
-    if (isEditableElement(e.target)) return;
-    if (e.target?.closest?.('.ws-ann-note-editor, .ws-ann-popover, .ws-ann-menu, #ws-reader-pill')) {
-      return;
-    }
 
     let direction = null;
     if (e.key === 'F3') {
       direction = e.shiftKey ? 'PREV' : 'NEXT';
-    } else if (e.key === 'g' && (e.ctrlKey || e.metaKey)) {
+    } else if ((e.key === 'g' || e.key === 'G') && (e.ctrlKey || e.metaKey) && !e.altKey) {
       direction = e.shiftKey ? 'PREV' : 'NEXT';
     }
 
@@ -386,7 +389,7 @@
 
   async function persistReaderBgColor(value) {
     try {
-      await chrome.storage.sync.set({ readerBgColor: value });
+      await WSSettingsStorage.set({ readerBgColor: value });
     } catch (err) {
       console.warn('[ws-reader] Failed to save background color:', err);
     }
@@ -416,7 +419,7 @@
 
   async function persistReaderTypography(values) {
     try {
-      await chrome.storage.sync.set({
+      await WSSettingsStorage.set({
         readerFontSize: values.readerFontSize,
         readerLineHeight: values.readerLineHeight,
         readerMaxWidth: values.readerMaxWidth
@@ -475,7 +478,7 @@
         return buildResponse({ resyncHighlight: false });
       }),
       onSettingsChange: async (basic) => {
-        await chrome.storage.sync.set(basic);
+        await WSSettingsStorage.set(basic);
         state.settings = { ...state.settings, ...basic };
         return withOperationLock(async () => {
           await loadSettings();
@@ -483,7 +486,7 @@
           WSDomSearch.invalidateMatcherCache();
           WSAnnotations.applyColors(state.settings);
           if (state.searchActive && state.query) {
-            return runSearch(state.query, state.options, state.currentIndex, false);
+            return runSearch(state.query, getSearchOptions(), state.currentIndex, false);
           }
           WSDomSearch.applyHighlightColors(state.settings);
           syncReaderPillUI();
@@ -631,7 +634,7 @@
             WSAnnotations.applyColors(state.settings);
             WSReaderPill.applySettings(state.settings);
             if (state.searchActive && state.query) {
-              return runSearch(state.query, state.options, state.currentIndex, false);
+              return runSearch(state.query, getSearchOptions(), state.currentIndex, false);
             }
             WSDomSearch.applyHighlightColors(state.settings);
             syncReaderPillUI();
@@ -748,6 +751,7 @@
       if (!result?.ok) {
         const messages = {
           not_article: 'Не удалось извлечь статью с этой страницы.',
+          sanitizer_unavailable: 'Модуль очистки HTML недоступен. Переустановите расширение.',
           timeout: 'Страница загружается слишком долго.',
           invalid_url: 'Недопустимый адрес ссылки.'
         };
@@ -830,7 +834,12 @@
     if (els.title) els.title.textContent = data.title || 'Без заголовка';
     if (els.meta) els.meta.textContent = formatMeta(data);
     if (els.content) {
-      els.content.innerHTML = data.contentHtml || '';
+      if (typeof DOMPurify === 'undefined' || typeof DOMPurify.sanitize !== 'function') {
+        els.content.innerHTML = '';
+        showError('Модуль очистки HTML недоступен. Переустановите расширение.');
+        return;
+      }
+      els.content.innerHTML = DOMPurify.sanitize(data.contentHtml || '');
       if (data.sourceUrl) {
         WSReaderExtract.fixMediaElements(els.content, data.sourceUrl);
       }

@@ -22,14 +22,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'QR_DECODE_BLOB') {
     (async () => {
       try {
-        const buffer = message.buffer;
-        if (!buffer) {
+        const bytes = typeof message.base64 === 'string' && message.base64
+          ? (globalThis.WSArchiveBytes?.base64ToBytes?.(message.base64) || (() => {
+            const binary = atob(message.base64);
+            const out = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i += 1) out[i] = binary.charCodeAt(i);
+            return out;
+          })())
+          : rawBufferToBytes(message.buffer);
+        if (!bytes?.byteLength) {
           sendResponse({ ok: false, error: 'Нет данных изображения' });
           return;
         }
 
         const mimeType = message.mimeType || 'image/png';
-        const blob = new Blob([buffer], { type: mimeType });
+        const blob = new Blob([bytes], { type: mimeType });
         const data = await globalThis.WSQr.decodeFromBlob(blob);
 
         if (data) {

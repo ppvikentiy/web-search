@@ -149,7 +149,7 @@ Matches are highlighted on the page; the active match uses a separate color. A c
 
 Style: background, underline, or both. Colors for normal and active annotations are configurable. Popup theme: system, light, dark, or custom colors.
 
-Annotations are stored locally per page URL (`chrome.storage.local`). The URL hash is ignored; in reader mode the source article URL is used.
+Annotations are stored locally per page URL (`chrome.storage.local`). The URL hash and common tracking parameters (`utm_*`, `fbclid`, `gclid`, `yclid`) are ignored; in reader mode the source article URL is used. Old records are evicted when too many pages accumulate or storage is near the limit.
 
 ---
 
@@ -192,7 +192,6 @@ archive.zip
 ├── README.txt      # short notes
 └── assets/
     ├── styles/
-    ├── scripts/
     ├── fonts/
     ├── images/
     └── files/
@@ -205,7 +204,9 @@ archive.zip
 - Open from the journal, or pick / drop a ZIP → `archive/viewer.html`
 - You can re-select the file if the cache was cleared
 
-Before collecting resources, the page is scrolled to load lazy images. Limits apply to page size, per-resource size, and resource count (see `lib/defaults.js`).
+Before collecting resources, the page is scrolled to load lazy images. Page scripts are not stored in the archive. Limits apply to page size, per-resource size, and resource count.
+
+By default, resource requests while building an archive are sent **with cookies** (`credentials: 'include'`) so authenticated images and styles can be saved. That means the extension may contact third-party hosts on your behalf during a save. Settings → Offline archive has an option to omit cookies.
 
 ---
 
@@ -236,20 +237,20 @@ Decoding runs in the page or via an offscreen document when the image cannot be 
 
 ## Settings
 
-Open via the gear in the popup or the extension options page (`settings/settings.html`). Changes auto-save to `chrome.storage.sync`.
+Open via the gear in the popup or the extension options page (`settings/settings.html`). Changes auto-save to `chrome.storage.local` (no Google account). Use JSON export/import to move settings between devices.
 
 | Section | What you configure |
 |---------|-------------------|
 | **Search** | Case, whole word, morphology, phrase and match modes |
 | **Highlighting** | Match colors |
-| **Annotations** | Colors, style, popup theme, iframes, exclusions |
+| **Annotations** | Colors, style, popup theme, iframes, exclusions, storage cleanup |
 | **Quote export** | TXT / MD, fields (note, URL, title, date), templates `{text}` `{note}` `{url}` `{title}` `{date}` |
 | **Literature export** | Preset: GOST, APA 7, MLA 9, Chicago |
 | **Morphology** | Depth: basic or extended |
 | **Dictionary** | Entry management |
 | **Search scope** | Iframes, Shadow DOM |
 | **Exclusions** | Tags and CSS selectors for search |
-| **Offline archive** | Journal, save by URL, open ZIP |
+| **Offline archive** | ZIP journal, prepare timeout, scroll delay, omit cookies on save |
 | **About** | Version, license, mission (RU / EN / UK) |
 
 Reset restores defaults from `lib/defaults.js`.
@@ -366,6 +367,8 @@ Everything needed is already in the repository; there are no external dependenci
 
 `web_accessible_resources`: `content/morphology-dict.json` — available to content scripts.
 
+Host permission is also used when saving an offline copy: the service worker fetches the page’s styles, fonts, and images. Those requests include the current session cookies by default.
+
 ---
 
 ## Development
@@ -373,7 +376,13 @@ Everything needed is already in the repository; there are no external dependenci
 When releasing, update together:
 
 - `version` in `manifest.json`
-- the content-script version constant in `background/background.js` (so reinjection picks up changes)
+- `WS_CONTENT_SCRIPT_VERSION` in `lib/injection-manifest.js` (so reinjection picks up changes)
+
+Pure functions can be checked without the browser:
+
+```bash
+node --test test/run.js
+```
 
 ---
 

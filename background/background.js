@@ -2,55 +2,20 @@
 // Use extension-root absolute paths instead.
 importScripts(
   '/lib/defaults.js',
+  '/lib/settings-storage.js',
+  '/lib/injection-manifest.js',
   '/lib/fflate.min.js',
   '/lib/archive-bytes.js',
+  '/lib/url-utils.js',
   '/lib/offline-archive.js',
   '/lib/archive-journal.js',
   '/lib/archive-cache.js'
 );
 
-const CONTENT_SCRIPT_VERSION = '1.0.3';
-
-const CONTENT_FILES = [
-  'lib/defaults.js',
-  'lib/icons.js',
-  'lib/word-boundary.js',
-  'lib/dom-utils.js',
-  'lib/user-dictionary.js',
-  'lib/readability.js',
-  'lib/dompurify.min.js',
-  'lib/jsqr.min.js',
-  'lib/qr-utils.js',
-  'content/morphology.js',
-  'content/dom-search.js',
-  'content/annotations.js',
-  'content/annotation-pill.js',
-  'lib/citation-formats.js',
-  'lib/literature-export.js',
-  'lib/annotation-export.js',
-  'content/annotation-note.js',
-  'content/dictionary-popup.js',
-  'content/qr-decode.js',
-  'content/search-sidebar.js',
-  'content/reader-extract.js',
-  'content/archive-collect.js',
-  'content/content.js'
-];
-
-const CSS_FILES = [
-  'lib/tokens.css',
-  'lib/icons.css',
-  'content/highlights.css',
-  'content/annotations.css',
-  'content/dictionary.css',
-  'content/qr-decode.css',
-  'content/sidebar.css'
-];
-
 const READER_PAYLOAD_PREFIX = 'reader-payload:';
 const OFFSCREEN_URL = 'offscreen/offscreen.html';
 
-const injectedTabs = new Set();
+const frameNonces = new Map();
 let creatingOffscreen = null;
 
 function readerPayloadKey(id) {
@@ -250,17 +215,20 @@ async function fetchImageBuffer(srcUrl) {
 
   const mimeType = response.headers.get('content-type') || 'image/png';
   const buffer = await response.arrayBuffer();
-  return { buffer, mimeType };
+  return {
+    base64: WSArchiveBytes.bytesToBase64(new Uint8Array(buffer)),
+    mimeType
+  };
 }
 
 async function decodeQrViaOffscreen(srcUrl) {
-  const { buffer, mimeType } = await fetchImageBuffer(srcUrl);
+  const { base64, mimeType } = await fetchImageBuffer(srcUrl);
   await ensureOffscreenDocument();
 
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage({
       type: 'QR_DECODE_BLOB',
-      buffer,
+      base64,
       mimeType
     }, (response) => {
       const err = chrome.runtime.lastError;
@@ -282,7 +250,7 @@ const TOP_FRAME = { frameId: 0 };
 async function pingContentScript(tabId) {
   try {
     const response = await chrome.tabs.sendMessage(tabId, { type: 'PING' }, TOP_FRAME);
-    return response?.ok && response?.version === CONTENT_SCRIPT_VERSION;
+    return response?.ok && response?.version === WS_CONTENT_SCRIPT_VERSION;
   } catch {
     return false;
   }
@@ -292,7 +260,7 @@ async function injectStyles(tabId) {
   try {
     await chrome.scripting.insertCSS({
       target: { tabId, allFrames: true },
-      files: CSS_FILES
+      files: WS_CSS_FILES
     });
   } catch {
     /* styles may already be injected */
@@ -303,20 +271,16 @@ async function ensureContentScript(tabId) {
   await injectStyles(tabId);
 
   if (await pingContentScript(tabId)) {
-    injectedTabs.add(tabId);
     return true;
   }
-  injectedTabs.delete(tabId);
 
   try {
     await chrome.scripting.executeScript({
       target: { tabId, allFrames: true },
-      files: CONTENT_FILES
+      files: WS_CONTENT_FILES
     });
 
-    const alive = await pingContentScript(tabId);
-    if (alive) injectedTabs.add(tabId);
-    return alive;
+    return await pingContentScript(tabId);
   } catch (err) {
     console.error('[web-search] injection failed:', err);
     return false;
@@ -450,7 +414,7 @@ async function extractArticleFromUrl(url) {
     };
   } finally {
     if (tabId != null) {
-      injectedTabs.delete(tabId);
+      frameNonces.delete(tabId);
       try {
         await chrome.tabs.remove(tabId);
       } catch {
@@ -518,15 +482,15 @@ function waitForDownloadComplete(downloadId, timeoutMs = 120000) {
   });
 }
 
-function bytesToBase64(bytes) {
-  const normalized = WSArchiveBytes.normalizeZipBytes(bytes);
-  if (!normalized?.byteLength) return '';
-  const chunkSize = 0x8000;
-  const parts = [];
-  for (let i = 0; i < normalized.length; i += chunkSize) {
-    parts.push(String.fromCharCode.apply(null, normalized.subarray(i, i + chunkSize)));
+function getFrameNonce(tabId) {
+  if (tabId == null) return null;
+  if (!frameNonces.has(tabId)) {
+    const nonce = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `ws-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    frameNonces.set(tabId, nonce);
   }
-  return btoa(parts.join(''));
+  return frameNonces.get(tabId);
 }
 
 async function downloadBlobViaOffscreen(bytes, filename, mimeType = 'application/zip') {
@@ -537,7 +501,7 @@ async function downloadBlobViaOffscreen(bytes, filename, mimeType = 'application
 
   const { objectUrl } = await offscreenRequest({
     type: 'CREATE_BLOB_URL',
-    base64: bytesToBase64(normalized),
+    base64: WSArchiveBytes.bytesToBase64(normalized),
     mimeType
   });
 
@@ -567,7 +531,12 @@ async function archivePage(tabId) {
   }
 
   broadcastArchiveProgress({ tabId, stage: 'prepare' });
-  const prepare = await sendToTab(tabId, { type: 'ARCHIVE_PREPARE' });
+  const settings = await WSSettingsStorage.get(WS_DEFAULTS);
+  const prepare = await sendToTab(tabId, {
+    type: 'ARCHIVE_PREPARE',
+    scrollStepDelayMs: settings.archiveScrollStepDelayMs,
+    prepareTimeoutMs: settings.archivePrepareTimeoutMs
+  });
   if (!prepare?.ok) {
     return {
       ok: false,
@@ -587,7 +556,6 @@ async function archivePage(tabId) {
   }
 
   broadcastArchiveProgress({ tabId, stage: 'build' });
-  const settings = await chrome.storage.sync.get(WS_DEFAULTS);
   const built = await WSOfflineArchive.buildZip(collected.data, settings);
 
   broadcastArchiveProgress({ tabId, stage: 'download' });
@@ -604,7 +572,7 @@ async function archivePage(tabId) {
     sizeBytes: built.sizeBytes,
     warnings: built.warnings,
     downloadId
-  }, settings.archiveJournalMaxEntries);
+  });
 
   await WSArchiveCache.put(entry.id, built.zipBytes, {
     savedAt: entry.savedAt,
@@ -644,7 +612,7 @@ async function archivePageFromUrl(rawUrl) {
     };
   }
 
-  const settings = await chrome.storage.sync.get(WS_DEFAULTS);
+  const settings = await WSSettingsStorage.get(WS_DEFAULTS);
   let tabId = null;
 
   try {
@@ -668,7 +636,7 @@ async function archivePageFromUrl(rawUrl) {
     };
   } finally {
     if (tabId != null) {
-      injectedTabs.delete(tabId);
+      frameNonces.delete(tabId);
       try {
         await chrome.tabs.remove(tabId);
       } catch {
@@ -707,7 +675,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const query = (info.selectionText || '').trim();
     if (!query) return;
 
-    const stored = await chrome.storage.sync.get(WS_DEFAULTS);
+    const stored = await WSSettingsStorage.get(WS_DEFAULTS);
     const isPhrase = /\s/.test(query);
 
     try {
@@ -769,12 +737,12 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  injectedTabs.delete(tabId);
+  frameNonces.delete(tabId);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'loading') {
-    injectedTabs.delete(tabId);
+    frameNonces.delete(tabId);
   }
 });
 
@@ -832,9 +800,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'GET_FRAME_NONCE') {
+    sendResponse({ ok: true, nonce: getFrameNonce(sender.tab?.id) });
+    return true;
+  }
+
   if (message.type === 'QR_FETCH_IMAGE') {
     fetchImageBuffer(message.srcUrl)
-      .then(({ buffer, mimeType }) => sendResponse({ ok: true, buffer, mimeType }))
+      .then(({ base64, mimeType }) => sendResponse({ ok: true, base64, mimeType }))
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }

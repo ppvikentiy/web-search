@@ -44,6 +44,14 @@ const els = {
   setExcludeTags: $('set-exclude-tags'),
   setExcludeSelectors: $('set-exclude-selectors'),
   btnReset: $('btn-reset'),
+  btnSettingsExport: $('btn-settings-export'),
+  btnSettingsImport: $('btn-settings-import'),
+  settingsImportFile: $('settings-import-file'),
+  annotationStorageStats: $('annotation-storage-stats'),
+  annotationStorageClear: $('annotation-storage-clear'),
+  setArchiveScrollDelay: $('set-archive-scroll-delay'),
+  setArchivePrepareTimeout: $('set-archive-prepare-timeout'),
+  setArchiveOmitCredentials: $('set-archive-omit-credentials'),
   saveStatus: $('save-status'),
   dictAddWord: $('dict-add-word'),
   dictAddForms: $('dict-add-forms'),
@@ -312,6 +320,16 @@ function loadForm(stored) {
 
   const depthRadio = document.querySelector(`input[name="morphDepth"][value="${stored.morphDepth || 'basic'}"]`);
   if (depthRadio) depthRadio.checked = true;
+
+  if (els.setArchiveScrollDelay) {
+    els.setArchiveScrollDelay.value = stored.archiveScrollStepDelayMs ?? WS_DEFAULTS.archiveScrollStepDelayMs;
+  }
+  if (els.setArchivePrepareTimeout) {
+    els.setArchivePrepareTimeout.value = stored.archivePrepareTimeoutMs ?? WS_DEFAULTS.archivePrepareTimeoutMs;
+  }
+  if (els.setArchiveOmitCredentials) {
+    els.setArchiveOmitCredentials.checked = Boolean(stored.archiveOmitCredentials);
+  }
 }
 
 function collectSettings() {
@@ -368,7 +386,10 @@ function collectSettings() {
     searchIframes: els.setIframes.checked,
     searchShadowDom: els.setShadow.checked,
     excludeTags: tags.length ? tags : WS_DEFAULTS.excludeTags,
-    excludeSelectors: selectors
+    excludeSelectors: selectors,
+    archiveScrollStepDelayMs: Number(els.setArchiveScrollDelay?.value) || WS_DEFAULTS.archiveScrollStepDelayMs,
+    archivePrepareTimeoutMs: Number(els.setArchivePrepareTimeout?.value) || WS_DEFAULTS.archivePrepareTimeoutMs,
+    archiveOmitCredentials: Boolean(els.setArchiveOmitCredentials?.checked)
   };
 }
 
@@ -951,7 +972,7 @@ async function save() {
   if (syncing) return;
 
   const settings = collectSettings();
-  await chrome.storage.sync.set(settings);
+  await WSSettingsStorage.set(settings);
 
   await broadcastSettingsUpdate();
 
@@ -1608,6 +1629,9 @@ function bindAutoSave() {
     if (input.id === 'clipper-field-date') return;
     if (input.id === 'clipper-custom') return;
     if (input.id === 'set-annotation-save-template') return;
+    if (input.id === 'settings-import-file') return;
+    if (input.id === 'archive-save-url') return;
+    if (input.id === 'archive-open-file') return;
     if (input.name === 'matchMode' || input.name === 'phraseMode' || input.name === 'annotationStyle' || input.name === 'annotationSaveFormat' || input.name === 'annotationPopupTheme') return;
     input.addEventListener('change', save);
   });
@@ -1654,8 +1678,70 @@ function bindSync() {
   });
 }
 
+async function loadAnnotationStorageUi() {
+  if (!els.annotationStorageStats) return;
+  try {
+    const stats = await WSAnnotationStorage.stats();
+    const pages = stats.pages || 0;
+    els.annotationStorageStats.textContent = pages
+      ? `Аннотации сохранены для ${pages} страниц`
+      : 'Сохранённых аннотаций нет';
+    if (els.annotationStorageClear) {
+      els.annotationStorageClear.disabled = pages === 0;
+    }
+  } catch {
+    els.annotationStorageStats.textContent = 'Не удалось прочитать хранилище аннотаций';
+  }
+}
+
+async function clearAnnotationStorage() {
+  if (!window.confirm('Удалить все сохранённые аннотации?')) return;
+  await WSAnnotationStorage.clearAll();
+  await loadAnnotationStorageUi();
+  els.saveStatus.textContent = 'Аннотации удалены';
+}
+
+async function exportSettingsJson() {
+  const stored = await WSSettingsStorage.get(WS_DEFAULTS);
+  const payload = {
+    type: 'web-search-settings',
+    version: 1,
+    settings: WSSettingsStorage.pickSettings(stored)
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `web-search-settings-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  els.saveStatus.textContent = 'Настройки экспортированы';
+}
+
+async function importSettingsJson(file) {
+  if (!file) return;
+  let data;
+  try {
+    data = JSON.parse(await file.text());
+  } catch {
+    els.saveStatus.textContent = 'Не удалось прочитать JSON-файл';
+    return;
+  }
+  const incoming = data?.settings && typeof data.settings === 'object' ? data.settings : data;
+  const picked = WSSettingsStorage.pickSettings(incoming);
+  if (!Object.keys(picked).length) {
+    els.saveStatus.textContent = 'В файле нет настроек';
+    return;
+  }
+  await WSSettingsStorage.set(picked);
+  const stored = await WSSettingsStorage.get(WS_DEFAULTS);
+  loadForm(stored);
+  await broadcastSettingsUpdate();
+  els.saveStatus.textContent = 'Настройки импортированы';
+}
+
 async function reset() {
-  await chrome.storage.sync.set(WS_DEFAULTS);
+  await WSSettingsStorage.set(WS_DEFAULTS);
   loadForm(WS_DEFAULTS);
   await save();
   els.saveStatus.textContent = 'Настройки сброшены';
@@ -1666,7 +1752,7 @@ async function reset() {
 
 async function init() {
   try {
-    const stored = await chrome.storage.sync.get(WS_DEFAULTS);
+    const stored = await WSSettingsStorage.get(WS_DEFAULTS);
     loadForm(stored);
 
     document.querySelectorAll('.nav-item').forEach((btn) => {
@@ -1674,6 +1760,15 @@ async function init() {
     });
 
     els.btnReset?.addEventListener('click', reset);
+    els.btnSettingsExport?.addEventListener('click', exportSettingsJson);
+    els.btnSettingsImport?.addEventListener('click', () => els.settingsImportFile?.click());
+    els.settingsImportFile?.addEventListener('change', (event) => {
+      const file = event.target.files?.[0];
+      importSettingsJson(file).finally(() => {
+        event.target.value = '';
+      });
+    });
+    els.annotationStorageClear?.addEventListener('click', clearAnnotationStorage);
     bindAutoSave();
     bindSync();
     bindClipper();
@@ -1682,6 +1777,7 @@ async function init() {
     bindArchive();
     initAbout();
     await loadDictionaryUi();
+    await loadAnnotationStorageUi();
   } catch (err) {
     if (els.saveStatus) {
       els.saveStatus.textContent = err.message || 'Ошибка загрузки настроек';

@@ -31,7 +31,10 @@ globalThis.WSDomSearch = (() => {
   function getExcludeConfig(settings) {
     return {
       excludeTags: settings.excludeTags || [],
-      excludeSelectors: settings.excludeSelectors || [],
+      excludeSelectors: [
+        ...(settings.excludeSelectors || []),
+        ...WSDomUtils.UI_REMOVE_SELECTORS
+      ],
       skipMatchMarks: true,
       skipAnnotationMarks: true
     };
@@ -50,20 +53,6 @@ globalThis.WSDomSearch = (() => {
     /* iframe search is coordinated via postMessage in content.js (allFrames injection). */
 
     return roots.filter((r) => r.root);
-  }
-
-  function collectTextNodes(settings, rootFilter = null) {
-    const excludeConfig = getExcludeConfig(settings);
-    const nodes = [];
-
-    for (const { root } of collectRoots(settings)) {
-      if (rootFilter && !rootFilter.some((r) => r === root || root.contains?.(r) || r.contains?.(root))) {
-        continue;
-      }
-      nodes.push(...WSDomUtils.collectTextNodesFromRoot(root, excludeConfig, root.ownerDocument || document));
-    }
-
-    return nodes;
   }
 
   function buildTermPattern(term, wholeWord) {
@@ -107,7 +96,10 @@ globalThis.WSDomSearch = (() => {
   function buildSingleMatcher(terms, options) {
     const wholeWord = options.matchMode === 'whole' || options.wholeWord;
     const flags = options.caseSensitive ? 'gu' : 'giu';
-    const escapedTerms = [...terms].filter(Boolean).map((t) => buildTermPattern(t, wholeWord));
+    const escapedTerms = [...terms]
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length || a.localeCompare(b))
+      .map((t) => buildTermPattern(t, wholeWord));
 
     if (!escapedTerms.length) return null;
 
@@ -150,6 +142,7 @@ globalThis.WSDomSearch = (() => {
     if (!words.length) return null;
 
     const wordFormSets = WSMorphology.getPhraseWordFormSets(words, options);
+    const filterTerms = wordFormSets.flatMap((set) => [...set]);
 
     return {
       type: 'phrase',
@@ -160,7 +153,7 @@ globalThis.WSDomSearch = (() => {
         wholeWord: options.matchMode === 'whole' || options.wholeWord,
         phraseMode: options.phraseMode
       },
-      quickFilters: buildQuickFilters(query, options, words),
+      quickFilters: buildQuickFilters(query, options, filterTerms),
       warning: null
     };
   }
@@ -242,7 +235,7 @@ globalThis.WSDomSearch = (() => {
       let allMatched = true;
 
       for (let w = 0; w < wordFormSets.length; w += 1) {
-        const forms = wordFormSets[w];
+        const forms = [...wordFormSets[w]].sort((a, b) => b.length - a.length);
         let wordFound = false;
 
         for (const form of forms) {
@@ -270,6 +263,7 @@ globalThis.WSDomSearch = (() => {
 
       if (allMatched && pos > i) {
         matches.push({ start: i, length: pos - i, text: text.slice(i, pos) });
+        i = pos - 1;
       }
     }
 
@@ -318,12 +312,7 @@ globalThis.WSDomSearch = (() => {
   }
 
   function clearHighlightsInRoot(root, doc) {
-    for (const mark of root.querySelectorAll(`mark.${MARK_CLASS}`)) {
-      const parent = mark.parentNode;
-      if (!parent) continue;
-      parent.replaceChild(doc.createTextNode(mark.textContent), mark);
-      parent.normalize();
-    }
+    WSDomUtils.unwrapMarks(root, `mark.${MARK_CLASS}`, doc);
   }
 
   function clearHighlights() {
@@ -355,7 +344,9 @@ globalThis.WSDomSearch = (() => {
     if (useHighlightApi && canUseHighlightApiForNode(textNode)) {
       try {
         const marks = [];
+        let lastHighlight = 0;
         for (const m of matchList) {
+          if (m.start < lastHighlight) continue;
           const range = createRangeForMatch(textNode, m);
           highlightRanges.push(range);
           const mark = doc.createElement('mark');
@@ -364,6 +355,7 @@ globalThis.WSDomSearch = (() => {
           mark._wsRange = range;
           mark.textContent = m.text;
           marks.push(mark);
+          lastHighlight = m.start + m.length;
         }
         if (highlightRanges.length) {
           CSS.highlights.set(HIGHLIGHT_NAME, new Highlight(...highlightRanges));
@@ -380,6 +372,7 @@ globalThis.WSDomSearch = (() => {
     let last = 0;
 
     for (const m of matchList) {
+      if (m.start < last) continue;
       if (m.start > last) {
         frag.appendChild(doc.createTextNode(text.slice(last, m.start)));
       }
@@ -476,7 +469,7 @@ globalThis.WSDomSearch = (() => {
 
   function setCurrentMatch(matches, index, { scroll = false } = {}) {
     for (const m of matches) {
-      m.classList?.remove(CURRENT_CLASS);
+      m?.classList?.remove(CURRENT_CLASS);
     }
 
     if (supportsHighlightApi && highlightRanges.length) {
@@ -582,6 +575,7 @@ globalThis.WSDomSearch = (() => {
     isRelevantMutation,
     mergeIncrementalMatches,
     collectRoots,
-    getExcludeConfig
+    getExcludeConfig,
+    findPhraseMatchesInText
   };
 })();

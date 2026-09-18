@@ -9,10 +9,10 @@ globalThis.WSArchiveCollect = globalThis.WSArchiveCollect ?? (() => {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  function getSettings() {
+  function getSettings(overrides = {}) {
     return {
-      scrollStepDelayMs: WS_DEFAULTS.archiveScrollStepDelayMs ?? 400,
-      prepareTimeoutMs: WS_DEFAULTS.archivePrepareTimeoutMs ?? 45000
+      scrollStepDelayMs: overrides.scrollStepDelayMs ?? WS_DEFAULTS.archiveScrollStepDelayMs ?? 400,
+      prepareTimeoutMs: overrides.prepareTimeoutMs ?? WS_DEFAULTS.archivePrepareTimeoutMs ?? 45000
     };
   }
 
@@ -121,8 +121,8 @@ globalThis.WSArchiveCollect = globalThis.WSArchiveCollect ?? (() => {
     }
   }
 
-  async function preparePageForArchive() {
-    const { scrollStepDelayMs, prepareTimeoutMs } = getSettings();
+  async function preparePageForArchive(overrides = {}) {
+    const { scrollStepDelayMs, prepareTimeoutMs } = getSettings(overrides);
     const deadline = Date.now() + prepareTimeoutMs;
     const originalScrollY = window.scrollY;
 
@@ -151,30 +151,11 @@ globalThis.WSArchiveCollect = globalThis.WSArchiveCollect ?? (() => {
   }
 
   function resolveUrl(url, baseUrl) {
-    if (!url || url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('javascript:')) {
-      return null;
-    }
-    if (url.startsWith('#')) return null;
-    try {
-      return new URL(url, baseUrl).href;
-    } catch {
-      return null;
-    }
+    return WSUrlUtils.resolveUrl(url, baseUrl);
   }
 
   function extractUrlsFromCss(text, baseUrl, out) {
-    if (!text) return;
-    const importRe = /@import\s+(?:url\(\s*['"]?([^'")]+)['"]?\s*\)|['"]([^'"]+)['"])/gi;
-    const urlRe = /url\(\s*['"]?([^'")]+)['"]?\s*\)/gi;
-    let match;
-    while ((match = importRe.exec(text))) {
-      const resolved = resolveUrl(match[1] || match[2], baseUrl);
-      if (resolved) out.add(resolved);
-    }
-    while ((match = urlRe.exec(text))) {
-      const resolved = resolveUrl(match[1], baseUrl);
-      if (resolved) out.add(resolved);
-    }
+    WSUrlUtils.extractUrlsFromCss(text, baseUrl, out);
   }
 
   function collectResourceUrls(root, baseUrl) {
@@ -183,11 +164,6 @@ globalThis.WSArchiveCollect = globalThis.WSArchiveCollect ?? (() => {
     root.querySelectorAll('link[rel="stylesheet"], link[rel="preload"][as="style"]').forEach((el) => {
       const href = resolveUrl(el.getAttribute('href'), baseUrl);
       if (href) urls.add(href);
-    });
-
-    root.querySelectorAll('script[src]').forEach((el) => {
-      const src = resolveUrl(el.getAttribute('src'), baseUrl);
-      if (src) urls.add(src);
     });
 
     root.querySelectorAll('img[src], img[srcset], source[src], source[srcset], video[src], audio[src]').forEach((el) => {
@@ -215,17 +191,8 @@ globalThis.WSArchiveCollect = globalThis.WSArchiveCollect ?? (() => {
   }
 
   function cleanupClone(root) {
-    root.querySelectorAll([
-      '#ws-archive-prepare-overlay',
-      '#ws-reader-pill',
-      '.ws-sidebar-root',
-      '.ws-ann-note-editor',
-      '.ws-ann-popover',
-      '.ws-ann-menu',
-      '.ws-dict-popup',
-      'mark.ws-match',
-      'mark.ws-annotation'
-    ].join(',')).forEach((el) => el.remove());
+    WSDomUtils.removeExtensionUi(root);
+    WSDomUtils.unwrapMarks(root, WSDomUtils.UI_UNWRAP_SELECTORS.join(','), root.ownerDocument || document);
   }
 
   function collectPageSnapshot() {

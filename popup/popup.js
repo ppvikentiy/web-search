@@ -1,40 +1,3 @@
-const CONTENT_SCRIPT_VERSION = '1.0.3';
-
-const CONTENT_FILES = [
-  'lib/defaults.js',
-  'lib/icons.js',
-  'lib/word-boundary.js',
-  'lib/dom-utils.js',
-  'lib/user-dictionary.js',
-  'lib/readability.js',
-  'lib/dompurify.min.js',
-  'lib/jsqr.min.js',
-  'lib/qr-utils.js',
-  'content/morphology.js',
-  'content/dom-search.js',
-  'content/annotations.js',
-  'content/annotation-pill.js',
-  'lib/citation-formats.js',
-  'lib/literature-export.js',
-  'lib/annotation-export.js',
-  'content/annotation-note.js',
-  'content/dictionary-popup.js',
-  'content/qr-decode.js',
-  'content/search-sidebar.js',
-  'content/reader-extract.js',
-  'content/archive-collect.js',
-  'content/content.js'
-];
-
-const CSS_FILES = [
-  'lib/icons.css',
-  'content/highlights.css',
-  'content/annotations.css',
-  'content/dictionary.css',
-  'content/qr-decode.css',
-  'content/sidebar.css'
-];
-
 const $ = (id) => document.getElementById(id);
 
 const els = {
@@ -71,6 +34,7 @@ let activeTabUrl = '';
 let isReaderTabActive = false;
 let appSettings = null;
 let searchActiveOnPage = false;
+let lastSearchedQuery = '';
 let annotationModeOnPage = false;
 let qrPanelVisible = false;
 let qrDataUrl = '';
@@ -111,7 +75,7 @@ function updatePageInfo(tab) {
 async function pingContentScript(tabId) {
   try {
     const response = await chrome.tabs.sendMessage(tabId, { type: 'PING' }, TOP_FRAME);
-    return response?.ok && response?.version === CONTENT_SCRIPT_VERSION;
+    return response?.ok && response?.version === WS_CONTENT_SCRIPT_VERSION;
   } catch {
     return false;
   }
@@ -139,7 +103,7 @@ async function injectStyles(tabId) {
   try {
     await chrome.scripting.insertCSS({
       target: { tabId, allFrames: true },
-      files: CSS_FILES
+      files: WS_CSS_FILES
     });
   } catch {
     /* styles may already be injected */
@@ -150,7 +114,7 @@ async function injectContentScript(tabId) {
   await injectStyles(tabId);
   await chrome.scripting.executeScript({
     target: { tabId, allFrames: true },
-    files: CONTENT_FILES
+    files: WS_CONTENT_FILES
   });
 }
 
@@ -312,16 +276,19 @@ function readSettingsFromForm() {
 }
 
 function getSearchOptions() {
-  const settings = appSettings || getDefaults();
+  const stored = appSettings || getDefaults();
+  const form = readSettingsFromForm();
   const query = els.query.value.trim();
   const isPhrase = /\s/.test(query);
-  const phraseMode = settings.phraseMode || 'exact';
+  const phraseMode = stored.phraseMode || 'exact';
+  const wholeWord = isPhrase ? false : Boolean(form.wholeWord);
   return {
-    caseSensitive: settings.caseSensitive ?? true,
-    wholeWord: isPhrase ? false : (settings.wholeWord ?? true),
-    useMorphology: (settings.useMorphology ?? false) || phraseMode === 'morph',
+    caseSensitive: Boolean(form.caseSensitive),
+    wholeWord,
+    useMorphology: Boolean(form.useMorphology) || phraseMode === 'morph',
     phraseMode: isPhrase ? phraseMode : 'exact',
-    matchMode: settings.matchMode || 'whole'
+    matchMode: wholeWord ? 'whole' : 'substring',
+    morphDepth: stored.morphDepth || 'basic'
   };
 }
 
@@ -342,6 +309,11 @@ function updateUI(state) {
   const displayCurrent = total && current >= 0 ? current + 1 : 0;
 
   searchActiveOnPage = Boolean(state.searchActive);
+  if (searchActiveOnPage && state.query) {
+    lastSearchedQuery = state.query;
+  } else if (!searchActiveOnPage) {
+    lastSearchedQuery = '';
+  }
   els.counter.textContent = `${displayCurrent} из ${total}`;
   els.btnPrev.disabled = total === 0;
   els.btnNext.disabled = total === 0;
@@ -359,7 +331,7 @@ function updateUI(state) {
 
 async function loadSettings() {
   const defaults = getDefaults();
-  const stored = await chrome.storage.sync.get(defaults);
+  const stored = await WSSettingsStorage.get(defaults);
   appSettings = { ...defaults, ...stored };
   applySettingsToForm();
 }
@@ -367,7 +339,7 @@ async function loadSettings() {
 async function saveBasicSettings() {
   const basic = readSettingsFromForm();
   appSettings = { ...(appSettings || getDefaults()), ...basic };
-  await chrome.storage.sync.set(basic);
+  await WSSettingsStorage.set(basic);
   return sendToActiveTab('UPDATE_SETTINGS');
 }
 
@@ -409,13 +381,14 @@ async function searchSelection() {
 }
 
 async function navigate(direction) {
-  const state = await sendToActiveTab(direction);
+  const state = await sendToActiveTab(direction, {}, { ensure: false });
   updateUI(state);
 }
 
 async function clearSearch() {
   els.query.value = '';
   searchActiveOnPage = false;
+  lastSearchedQuery = '';
   updateClearButton();
 
   const state = await sendToActiveTab('CLEAR');
@@ -658,7 +631,27 @@ els.btnReaderExit?.addEventListener('click', exitReaderFromPopup);
 els.btnSettings?.addEventListener('click', openSettings);
 
 els.query?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') runSearch();
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const query = els.query.value.trim();
+  if (searchActiveOnPage && query && query === lastSearchedQuery) {
+    navigate(e.shiftKey ? 'PREV' : 'NEXT');
+    return;
+  }
+  runSearch();
+});
+
+document.addEventListener('keydown', (e) => {
+  let direction = null;
+  if (e.key === 'F3') {
+    direction = e.shiftKey ? 'PREV' : 'NEXT';
+  } else if ((e.key === 'g' || e.key === 'G') && (e.ctrlKey || e.metaKey) && !e.altKey) {
+    direction = e.shiftKey ? 'PREV' : 'NEXT';
+  }
+  if (!direction || !searchActiveOnPage) return;
+  e.preventDefault();
+  e.stopPropagation();
+  navigate(direction);
 });
 
 els.query?.addEventListener('input', updateClearButton);

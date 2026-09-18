@@ -310,6 +310,16 @@
             </label>
           </div>
         </div>
+
+        <div class="card">
+          <div class="row row-actions">
+            <div class="row-text">
+              <span class="row-label">Хранилище аннотаций</span>
+              <span class="row-desc" id="annotation-storage-stats">Подсчёт сохранённых страниц…</span>
+            </div>
+            <button type="button" id="annotation-storage-clear" class="btn-text">Очистить всё</button>
+          </div>
+        </div>
       </section>
 
       <section id="panel-clipper" class="panel" role="tabpanel" hidden>
@@ -626,7 +636,7 @@
         <header class="panel-header panel-header-with-action">
           <div class="panel-header-main">
             <h2>Офлайн-архив</h2>
-            <p class="panel-desc">Страница сохраняется в ZIP-архив и скачивается на диск. Укажите ссылку для сохранения или откройте ранее скачанный ZIP-файл для просмотра в браузере.</p>
+            <p class="panel-desc">Страница сохраняется в ZIP-архив и скачивается на диск. Укажите ссылку для сохранения или откройте ранее скачанный ZIP-файл для просмотра в браузере. При сохранении расширение может запросить ресурсы страницы с куками вашей сессии, чтобы выгрузить авторизованные картинки и стили.</p>
           </div>
           <button type="button" id="archive-open-btn" class="dict-add-btn archive-header-open-btn">Открыть</button>
         </header>
@@ -640,6 +650,29 @@
             <button type="button" id="archive-save-current" class="dict-add-btn">Сохранить офлайн</button>
           </div>
           <p id="archive-stats" class="archive-stats"></p>
+        </div>
+
+        <div class="card card-grid-2">
+          <label class="field">
+            <span class="field-label">Задержка шага прокрутки, мс</span>
+            <span class="field-hint">Больше значение — спокойнее прокрутка на лентах с ленивой подгрузкой.</span>
+            <input type="number" id="set-archive-scroll-delay" min="50" max="5000" step="50" value="400">
+          </label>
+          <label class="field">
+            <span class="field-label">Таймаут подготовки, мс</span>
+            <span class="field-hint">Сколько ждать прокрутки и загрузки изображений перед снимком.</span>
+            <input type="number" id="set-archive-prepare-timeout" min="5000" max="180000" step="1000" value="45000">
+          </label>
+        </div>
+
+        <div class="card">
+          <label class="row toggle-row">
+            <div class="row-text">
+              <span class="row-label">Не отправлять куки при сохранении</span>
+              <span class="row-desc">Ресурсы запрашиваются без вашей сессии. Авторизованные картинки могут не попасть в архив.</span>
+            </div>
+            <input type="checkbox" id="set-archive-omit-credentials" class="toggle">
+          </label>
         </div>
 
         <div class="archive-journal-header">
@@ -687,7 +720,12 @@
 
       <footer class="content-footer">
         <p id="save-status" class="save-status" aria-live="polite"></p>
-        <button type="button" id="btn-reset" class="btn-text">Сбросить настройки</button>
+        <div class="footer-actions">
+          <button type="button" id="btn-settings-export" class="btn-text">Экспорт настроек</button>
+          <button type="button" id="btn-settings-import" class="btn-text">Импорт настроек</button>
+          <input type="file" id="settings-import-file" accept="application/json,.json" hidden>
+          <button type="button" id="btn-reset" class="btn-text">Сбросить настройки</button>
+        </div>
       </footer>
     </main>
   </div>
@@ -740,6 +778,8 @@
   </div>
 
   <script src="../lib/defaults.js"></script>
+  <script src="../lib/settings-storage.js"></script>
+  <script src="../lib/annotation-storage.js"></script>
   <script src="../lib/citation-formats.js"></script>
   <script src="../lib/literature-export.js"></script>
   <script src="../lib/archive-bytes.js"></script>

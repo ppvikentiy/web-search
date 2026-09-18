@@ -100,6 +100,7 @@ globalThis.WSAnnotationNote = (() => {
     menuEl.className = 'ws-ann-menu';
     menuEl.hidden = true;
     menuEl.setAttribute('role', 'menu');
+    WSDomUtils.decorateExtensionUi?.(menuEl);
     document.documentElement.appendChild(menuEl);
   }
 
@@ -109,6 +110,7 @@ globalThis.WSAnnotationNote = (() => {
     popoverEl.hidden = true;
     popoverEl.addEventListener('mouseenter', cancelHidePopover);
     popoverEl.addEventListener('mouseleave', scheduleHidePopover);
+    WSDomUtils.decorateExtensionUi?.(popoverEl);
     document.documentElement.appendChild(popoverEl);
   }
 
@@ -151,6 +153,7 @@ globalThis.WSAnnotationNote = (() => {
 
     const editor = document.createElement('div');
     editor.className = 'ws-ann-note-editor';
+    WSDomUtils.decorateExtensionUi?.(editor);
 
     const textarea = document.createElement('textarea');
     textarea.className = 'ws-ann-note-textarea';
@@ -311,6 +314,7 @@ globalThis.WSAnnotationNote = (() => {
 
     const editor = document.createElement('div');
     editor.className = 'ws-ann-note-editor';
+    WSDomUtils.decorateExtensionUi?.(editor);
 
     const textarea = document.createElement('textarea');
     textarea.className = 'ws-ann-note-textarea';
