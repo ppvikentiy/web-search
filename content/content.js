@@ -2,7 +2,7 @@
  * Content script entry: messaging, state, MutationObserver.
  */
 (() => {
-  const CONTENT_SCRIPT_VERSION = '1.0.3';
+  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '1.0.8';
 
   function isExtensionAlive() {
     try {
@@ -51,7 +51,8 @@
     lastWarning: null,
     fullRescanNeeded: true,
     pendingMutations: [],
-    iframeSearchToken: 0
+    iframeSearchToken: 0,
+    frameNonce: ''
   };
 
   function wrapMatch(mark, frameWindow = null) {
@@ -66,37 +67,51 @@
   function resolveMatchElement(matchRef) {
     if (!matchRef) return null;
     if (matchRef.element?.isConnected) return matchRef.element;
-    if (matchRef.frameWindow && matchRef.markId) {
-      try {
-        const doc = matchRef.frameWindow.document;
-        return doc.querySelector(`mark.ws-match[data-ws-mark-id="${matchRef.markId}"]`);
-      } catch {
-        return null;
+    if (matchRef.markId) {
+      const escaped = (typeof CSS !== 'undefined' && CSS.escape)
+        ? CSS.escape(String(matchRef.markId))
+        : String(matchRef.markId);
+      const selector = `mark.ws-match[data-ws-mark-id="${escaped}"]`;
+      if (matchRef.frameWindow) {
+        try {
+          const found = matchRef.frameWindow.document.querySelector(selector);
+          if (found) return found;
+        } catch { /* cross-origin */ }
       }
+      try {
+        const found = document.querySelector(selector);
+        if (found) return found;
+      } catch { /* ignore */ }
     }
     return matchRef.element?._wsRange ? matchRef.element : null;
   }
 
+  function isLiveMatchElement(el) {
+    return Boolean(el && (el.isConnected || el._wsRange));
+  }
+
   function filterLiveMatchRefs(matchRefs) {
-    return matchRefs.filter((ref) => {
-      const el = resolveMatchElement(ref);
-      return Boolean(el?.isConnected);
-    });
+    return matchRefs.filter((ref) => isLiveMatchElement(resolveMatchElement(ref)));
+  }
+
+  function collectDomMatchRefs() {
+    try {
+      return [...document.querySelectorAll('mark.ws-match')].map((mark) => wrapMatch(mark));
+    } catch {
+      return [];
+    }
   }
 
   function setCurrentMatchRef(matchRefs, index, { scroll = false } = {}) {
-    const elements = matchRefs.map((ref) => resolveMatchElement(ref)).filter(Boolean);
-    const idx = WSDomSearch.setCurrentMatch(elements, index, { scroll: false });
+    const elements = matchRefs.map((ref) => resolveMatchElement(ref));
+    const idx = WSDomSearch.setCurrentMatch(elements, index, { scroll });
 
-    if (scroll && idx >= 0) {
-      const el = elements[idx];
-      if (el) {
-        if (matchRefs[idx]?.frameWindow && matchRefs[idx].frameWindow !== window) {
-          try {
-            matchRefs[idx].frameWindow.focus?.();
-          } catch { /* ignore */ }
-        }
-        WSDomSearch.setCurrentMatch([el], 0, { scroll: true });
+    if (scroll && idx >= 0 && document.hasFocus()) {
+      const frameWindow = matchRefs[idx]?.frameWindow;
+      if (frameWindow && frameWindow !== window) {
+        try {
+          frameWindow.focus?.();
+        } catch { /* ignore */ }
       }
     }
 
@@ -207,24 +222,54 @@
       throw new Error('Extension context invalidated');
     }
 
-    return new Promise((resolve, reject) => {
-      try {
-        chrome.storage.sync.get(WS_DEFAULTS, (stored) => {
-          const err = chrome.runtime.lastError;
-          if (err) {
-            handleExtensionError(err);
-            reject(new Error(err.message));
-            return;
-          }
+    try {
+      const stored = await WSSettingsStorage.get(WS_DEFAULTS);
+      state.settings = parseSettings(stored);
+      return state.settings;
+    } catch (err) {
+      handleExtensionError(err);
+      throw err;
+    }
+  }
 
-          state.settings = parseSettings(stored);
-          resolve(state.settings);
-        });
-      } catch (err) {
-        handleExtensionError(err);
-        reject(err);
-      }
-    });
+  async function ensureFrameNonce() {
+    if (state.frameNonce) return state.frameNonce;
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'GET_FRAME_NONCE' });
+      state.frameNonce = response?.nonce || '';
+    } catch {
+      state.frameNonce = '';
+    }
+    globalThis.__wsFrameNonce = state.frameNonce;
+    return state.frameNonce;
+  }
+
+  function hasMatchingFrameNonce(nonce) {
+    return Boolean(state.frameNonce) && nonce === state.frameNonce;
+  }
+
+  function isTrustedTopMessage(event) {
+    const msg = event.data;
+    if (!msg || typeof msg !== 'object') return false;
+    if (!hasMatchingFrameNonce(msg.nonce)) return false;
+    return event.source === window.top;
+  }
+
+  function isTrustedChildFrame(event) {
+    const msg = event.data;
+    if (!msg || typeof msg !== 'object') return false;
+    if (!hasMatchingFrameNonce(msg.nonce)) return false;
+    for (const frame of document.querySelectorAll('iframe')) {
+      try {
+        if (event.source === frame.contentWindow) return true;
+      } catch { /* ignore */ }
+    }
+    return false;
+  }
+
+  /* Cross-origin iframes require targetOrigin '*'; payloads contain match text only, never secrets. */
+  function postToIframe(frame, payload) {
+    frame.contentWindow?.postMessage({ ...payload, nonce: state.frameNonce }, '*');
   }
 
   async function loadSessionMode() {
@@ -277,13 +322,23 @@
   }
 
   function getSearchOptions(overrides = {}) {
+    const settings = state.settings || {};
+    const has = (key) => Object.prototype.hasOwnProperty.call(overrides, key)
+      && overrides[key] !== undefined;
+
+    const wholeWord = has('wholeWord')
+      ? Boolean(overrides.wholeWord)
+      : has('matchMode')
+        ? overrides.matchMode === 'whole'
+        : Boolean(settings.wholeWord);
+
     return {
-      caseSensitive: overrides.caseSensitive ?? state.options.caseSensitive ?? state.settings.caseSensitive,
-      wholeWord: overrides.wholeWord ?? state.options.wholeWord ?? state.settings.wholeWord,
-      useMorphology: overrides.useMorphology ?? state.options.useMorphology ?? state.settings.useMorphology,
-      phraseMode: overrides.phraseMode ?? state.options.phraseMode ?? state.settings.phraseMode,
-      matchMode: overrides.matchMode ?? state.options.matchMode ?? state.settings.matchMode,
-      morphDepth: state.settings.morphDepth
+      caseSensitive: has('caseSensitive') ? Boolean(overrides.caseSensitive) : (settings.caseSensitive ?? true),
+      wholeWord,
+      useMorphology: has('useMorphology') ? Boolean(overrides.useMorphology) : Boolean(settings.useMorphology),
+      phraseMode: has('phraseMode') ? overrides.phraseMode : (settings.phraseMode || 'exact'),
+      matchMode: wholeWord ? 'whole' : 'substring',
+      morphDepth: settings.morphDepth || 'basic'
     };
   }
 
@@ -331,27 +386,15 @@
     syncSidebarUI();
   }
 
-  function isEditableElement(el) {
-    if (!el || el.nodeType !== 1) return false;
-    const tag = el.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-    if (el.isContentEditable) return true;
-    return Boolean(el.closest?.('[contenteditable="true"]'));
-  }
-
   function onSearchKeydown(e) {
     if (state.tornDown || !isExtensionAlive()) return;
     if (!WSAnnotations.isTopFrame()) return;
     if (!state.searchActive || !state.matches.length) return;
-    if (isEditableElement(e.target)) return;
-    if (e.target?.closest?.('.ws-ann-note-editor, .ws-ann-popover, .ws-ann-menu, #ws-annotation-pill, #ws-search-sidebar')) {
-      return;
-    }
 
     let direction = null;
     if (e.key === 'F3') {
       direction = e.shiftKey ? 'PREV' : 'NEXT';
-    } else if (e.key === 'g' && (e.ctrlKey || e.metaKey)) {
+    } else if ((e.key === 'g' || e.key === 'G') && (e.ctrlKey || e.metaKey) && !e.altKey) {
       direction = e.shiftKey ? 'PREV' : 'NEXT';
     }
 
@@ -436,11 +479,11 @@
     if (!WSAnnotations.isTopFrame()) return;
     for (const frame of document.querySelectorAll('iframe')) {
       try {
-        frame.contentWindow?.postMessage({
+        postToIframe(frame, {
           type: 'ws-annotation-event',
           action: 'mode',
           enabled
-        }, '*');
+        });
       } catch { /* cross-origin */ }
     }
   }
@@ -450,12 +493,12 @@
 
     for (const frame of document.querySelectorAll('iframe')) {
       try {
-        frame.contentWindow?.postMessage({
+        postToIframe(frame, {
           type: 'ws-search',
           action,
           token: state.iframeSearchToken,
           ...payload
-        }, '*');
+        });
       } catch { /* cross-origin */ }
     }
   }
@@ -465,11 +508,31 @@
       return Promise.resolve([]);
     }
 
+    const frames = [...document.querySelectorAll('iframe')].filter((frame) => {
+      try {
+        return Boolean(frame.contentWindow);
+      } catch {
+        return false;
+      }
+    });
+    if (!frames.length) return Promise.resolve([]);
+
     return new Promise((resolve) => {
       const results = [];
       const token = state.iframeSearchToken;
+      let settled = false;
+      const timer = setTimeout(finish, timeoutMs);
+
+      function finish() {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener('message', onResult);
+        clearTimeout(timer);
+        resolve(results);
+      }
 
       function onResult(event) {
+        if (!isTrustedChildFrame(event)) return;
         const msg = event.data;
         if (msg?.type !== 'ws-search' || msg.action !== 'RESULT' || msg.token !== token) return;
         results.push({
@@ -481,13 +544,10 @@
             frameWindow: event.source
           }))
         });
+        if (results.length >= frames.length) finish();
       }
 
       window.addEventListener('message', onResult);
-      setTimeout(() => {
-        window.removeEventListener('message', onResult);
-        resolve(results);
-      }, timeoutMs);
     });
   }
 
@@ -504,6 +564,7 @@
   }
 
   function onFrameModeMessage(event) {
+    if (!isTrustedTopMessage(event)) return;
     const msg = event.data;
     if (msg?.type === 'ws-annotation-event' && msg.action === 'mode') {
       if (WSAnnotations.isTopFrame()) return;
@@ -548,6 +609,7 @@
         type: 'ws-search',
         action: 'RESULT',
         token,
+        nonce: state.frameNonce,
         matches: state.matches.map((ref) => ({
           markId: ref.markId || ref.element?.getAttribute?.('data-ws-mark-id'),
           text: ref.text || ref.element?.textContent || ''
@@ -718,24 +780,32 @@
   function navigate(direction) {
     state.matches = filterLiveMatchRefs(state.matches);
     if (!state.matches.length) {
+      state.matches = collectDomMatchRefs();
+    }
+    if (!state.matches.length) {
       state.currentIndex = -1;
       syncSidebarUI();
       return buildResponse({ resyncHighlight: false });
     }
 
+    let next;
     if (state.currentIndex < 0 || state.currentIndex >= state.matches.length) {
-      state.currentIndex = 0;
-    }
-
-    let next = state.currentIndex;
-    if (direction === 'NEXT') {
+      next = direction === 'PREV' ? state.matches.length - 1 : 0;
+    } else if (direction === 'NEXT') {
       next = (state.currentIndex + 1) % state.matches.length;
-    } else if (direction === 'PREV') {
+    } else {
       next = state.currentIndex <= 0 ? state.matches.length - 1 : state.currentIndex - 1;
     }
 
     suppressObserverBriefly();
-    state.currentIndex = setCurrentMatchRef(state.matches, next, { scroll: true });
+    let idx = setCurrentMatchRef(state.matches, next, { scroll: true });
+    if (idx < 0) {
+      const fallback = state.matches.findIndex((ref) => isLiveMatchElement(resolveMatchElement(ref)));
+      if (fallback >= 0) {
+        idx = setCurrentMatchRef(state.matches, fallback, { scroll: true });
+      }
+    }
+    state.currentIndex = idx;
     state.anchorMarkId = state.matches[state.currentIndex]?.markId || null;
 
     const currentRef = state.matches[state.currentIndex];
@@ -744,7 +814,8 @@
         currentRef.frameWindow.postMessage({
           type: 'ws-search',
           action: 'SET_CURRENT',
-          markId: currentRef.markId
+          markId: currentRef.markId,
+          nonce: state.frameNonce
         }, '*');
       } catch { /* ignore */ }
     }
@@ -874,17 +945,7 @@
         return buildResponse({ resyncHighlight: false });
       }),
       onSettingsChange: async (basic) => {
-        await new Promise((resolve, reject) => {
-          try {
-            chrome.storage.sync.set(basic, () => {
-              const err = chrome.runtime.lastError;
-              if (err) reject(new Error(err.message));
-              else resolve();
-            });
-          } catch (err) {
-            reject(err);
-          }
-        });
+        await WSSettingsStorage.set(basic);
         state.settings = { ...state.settings, ...basic };
         return withOperationLock(async () => {
           await loadSettings();
@@ -893,7 +954,7 @@
           WSAnnotations.applyColors(state.settings);
           state.fullRescanNeeded = true;
           if (state.searchActive && state.query) {
-            return runSearch(state.query, state.options, state.currentIndex, false);
+            return runSearch(state.query, getSearchOptions(), state.currentIndex, false);
           }
           WSDomSearch.applyHighlightColors(state.settings);
           return buildResponse();
@@ -911,6 +972,7 @@
           const messages = {
             not_article: 'Не удалось извлечь статью с этой страницы.',
             readability_unavailable: 'Модуль читателя недоступен.',
+            sanitizer_unavailable: 'Модуль очистки HTML недоступен. Переустановите расширение.',
             storage_failed: 'Не удалось сохранить статью для чтения.',
             open_failed: 'Не удалось открыть вкладку читателя.'
           };
@@ -1108,7 +1170,7 @@
             WSAnnotations.applyColors(state.settings);
             state.fullRescanNeeded = true;
             if (state.searchActive && state.query) {
-              return runSearch(state.query, state.options, state.currentIndex, false);
+              return runSearch(state.query, getSearchOptions(), state.currentIndex, false);
             }
             WSDomSearch.applyHighlightColors(state.settings);
             return buildResponse();
@@ -1151,6 +1213,7 @@
               const messages = {
                 not_article: 'Не удалось извлечь статью с этой страницы.',
                 readability_unavailable: 'Модуль читателя недоступен.',
+                sanitizer_unavailable: 'Модуль очистки HTML недоступен. Переустановите расширение.',
                 storage_failed: 'Не удалось сохранить статью для чтения.',
                 open_failed: 'Не удалось открыть вкладку читателя.'
               };
@@ -1167,7 +1230,7 @@
           if (!WSAnnotations.isTopFrame()) {
             return { ok: false, error: 'not_top_frame' };
           }
-          return WSArchiveCollect.preparePageForArchive();
+          return WSArchiveCollect.preparePageForArchive(message);
 
         case 'ARCHIVE_COLLECT':
           if (!WSAnnotations.isTopFrame()) {
@@ -1196,6 +1259,7 @@
     WSQrDecode.init();
     startKeyboardShortcuts();
     window.addEventListener('message', onFrameModeMessage);
+    ensureFrameNonce().catch(() => {});
 
     try {
       const settings = await loadSettings();

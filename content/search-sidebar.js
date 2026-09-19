@@ -15,6 +15,7 @@ globalThis.WSSearchSidebar = (() => {
   let callbacks = {};
   let collapsed = false;
   let searchActiveOnPage = false;
+  let lastSearchedQuery = '';
 
   function loadCollapsed() {
     try {
@@ -145,6 +146,11 @@ globalThis.WSSearchSidebar = (() => {
     const displayCurrent = total && current >= 0 ? current + 1 : 0;
 
     searchActiveOnPage = Boolean(state.searchActive);
+    if (searchActiveOnPage && state.query) {
+      lastSearchedQuery = state.query;
+    } else if (!searchActiveOnPage) {
+      lastSearchedQuery = '';
+    }
     if (els.counter) els.counter.textContent = `${displayCurrent} из ${total}`;
     if (els.btnPrev) els.btnPrev.disabled = total === 0;
     if (els.btnNext) els.btnNext.disabled = total === 0;
@@ -260,7 +266,14 @@ globalThis.WSSearchSidebar = (() => {
     tabEl?.addEventListener('click', () => setCollapsed(false));
 
     els.query?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') runSearch();
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const query = els.query.value.trim();
+      if (searchActiveOnPage && query && query === lastSearchedQuery) {
+        navigate(e.shiftKey ? 'PREV' : 'NEXT');
+        return;
+      }
+      runSearch();
     });
 
     els.query?.addEventListener('input', updateClearButton);
@@ -286,6 +299,7 @@ globalThis.WSSearchSidebar = (() => {
     root = document.createElement('div');
     root.id = SIDEBAR_ID;
     root.hidden = true;
+    WSDomUtils.decorateExtensionUi?.(root);
 
     tabEl = document.createElement('div');
     tabEl.className = 'ws-sidebar-tab';
@@ -456,6 +470,7 @@ globalThis.WSSearchSidebar = (() => {
     callbacks = {};
     collapsed = false;
     searchActiveOnPage = false;
+    lastSearchedQuery = '';
   }
 
   return {

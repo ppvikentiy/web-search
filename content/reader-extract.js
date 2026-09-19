@@ -172,8 +172,10 @@ globalThis.WSReaderExtract = (() => {
     }
 
     let contentHtml = article.content;
-    if (typeof DOMPurify !== 'undefined') {
+    if (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function') {
       contentHtml = DOMPurify.sanitize(contentHtml);
+    } else {
+      return { ok: false, error: 'sanitizer_unavailable' };
     }
     const baseUrl = location.href;
     contentHtml = normalizeContentUrls(contentHtml, baseUrl);

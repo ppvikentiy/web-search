@@ -315,6 +315,7 @@ globalThis.WSAnnotationPill = (() => {
 
 
     root.append(barEl, panelEl);
+    WSDomUtils.decorateExtensionUi?.(root);
 
     document.documentElement.appendChild(root);
 
@@ -592,6 +593,26 @@ globalThis.WSAnnotationPill = (() => {
 
 
 
+  function showMessage(text) {
+    if (!root) buildPill();
+    let status = root.querySelector('.ws-pill-status');
+    if (!status) {
+      status = document.createElement('p');
+      status.className = 'ws-pill-status';
+      status.setAttribute('role', 'status');
+      root.appendChild(status);
+    }
+    status.textContent = text || '';
+    status.hidden = !text;
+    if (text) {
+      clearTimeout(status._wsTimer);
+      status._wsTimer = setTimeout(() => {
+        status.textContent = '';
+        status.hidden = true;
+      }, 4000);
+    }
+  }
+
   function destroy() {
 
     document.removeEventListener('mousemove', onDragMove);
@@ -643,6 +664,8 @@ globalThis.WSAnnotationPill = (() => {
     renderList,
 
     resetPosition,
+
+    showMessage,
 
     destroy
 

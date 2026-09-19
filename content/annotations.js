@@ -29,7 +29,10 @@ globalThis.WSAnnotations = (() => {
   function getAnnotationExcludeConfig() {
     return {
       excludeTags: settings.annotationExcludeTags || [],
-      excludeSelectors: settings.annotationExcludeSelectors || [],
+      excludeSelectors: [
+        ...(settings.annotationExcludeSelectors || []),
+        ...WSDomUtils.UI_REMOVE_SELECTORS
+      ],
       skipMatchMarks: false,
       skipAnnotationMarks: false,
       skipAnnotationPill: true,
@@ -104,15 +107,6 @@ globalThis.WSAnnotations = (() => {
     }
   }
 
-  function getLocalStorage() {
-    try {
-      if (!isExtensionAlive()) return null;
-      return chrome.storage?.local ?? null;
-    } catch {
-      return null;
-    }
-  }
-
   function isTopFrame() {
     return window === window.top;
   }
@@ -120,32 +114,12 @@ globalThis.WSAnnotations = (() => {
   function getPageUrl() {
     const readerSource = document.documentElement.dataset.wsReaderSourceUrl;
     const url = readerSource || location.href;
-    return url.split('#')[0];
-  }
-
-  function storageKey() {
-    return `annotations:${getPageUrl()}`;
+    return WSAnnotationStorage?.normalizePageUrl?.(url) || url.split('#')[0];
   }
 
   function generateId() {
     return `ws-ann-${Date.now()}-${nextId++}`;
   }
-
-  const POPUP_THEME_VARS = [
-    '--ws-ann-popup-bg',
-    '--ws-ann-popup-text',
-    '--ws-ann-popup-muted',
-    '--ws-ann-popup-border',
-    '--ws-ann-popup-shadow',
-    '--ws-ann-popup-input-bg',
-    '--ws-ann-popup-input-border',
-    '--ws-ann-popup-btn-hover',
-    '--ws-ann-popup-btn-primary-bg',
-    '--ws-ann-popup-btn-primary-hover',
-    '--ws-ann-popup-btn-danger-hover',
-    '--ws-ann-popup-btn-danger-text',
-    '--ws-ann-popup-focus'
-  ];
 
   function hexToRgba(hex, alpha) {
     const h = String(hex || '').replace('#', '');
@@ -159,36 +133,31 @@ globalThis.WSAnnotations = (() => {
 
   function applyPopupTheme(newSettings) {
     settings = { ...WS_DEFAULTS, ...newSettings };
-    const root = document.documentElement;
     const theme = settings.annotationPopupTheme || 'system';
+    let customProps = null;
 
-    if (theme === 'system') {
-      delete root.dataset.wsAnnPopupTheme;
-    } else {
-      root.dataset.wsAnnPopupTheme = theme;
+    if (theme === 'custom') {
+      const bg = settings.annotationPopupBg || '#1a1a2e';
+      const text = settings.annotationPopupText || '#f0f0f5';
+      const muted = settings.annotationPopupMuted || '#a0a0b8';
+      customProps = {
+        '--ws-ann-popup-bg': bg,
+        '--ws-ann-popup-text': text,
+        '--ws-ann-popup-muted': muted,
+        '--ws-ann-popup-border': hexToRgba(text, 0.12),
+        '--ws-ann-popup-shadow': '0 6px 28px rgba(0, 0, 0, 0.4)',
+        '--ws-ann-popup-input-bg': hexToRgba(text, 0.06),
+        '--ws-ann-popup-input-border': hexToRgba(text, 0.18),
+        '--ws-ann-popup-btn-hover': hexToRgba(text, 0.1),
+        '--ws-ann-popup-btn-primary-bg': hexToRgba(text, 0.1),
+        '--ws-ann-popup-btn-primary-hover': hexToRgba(text, 0.16),
+        '--ws-ann-popup-btn-danger-hover': 'rgba(255, 80, 80, 0.25)',
+        '--ws-ann-popup-btn-danger-text': '#ffb4b4',
+        '--ws-ann-popup-focus': hexToRgba(text, 0.35)
+      };
     }
 
-    POPUP_THEME_VARS.forEach((name) => root.style.removeProperty(name));
-
-    if (theme !== 'custom') return;
-
-    const bg = settings.annotationPopupBg || '#1a1a2e';
-    const text = settings.annotationPopupText || '#f0f0f5';
-    const muted = settings.annotationPopupMuted || '#a0a0b8';
-
-    root.style.setProperty('--ws-ann-popup-bg', bg);
-    root.style.setProperty('--ws-ann-popup-text', text);
-    root.style.setProperty('--ws-ann-popup-muted', muted);
-    root.style.setProperty('--ws-ann-popup-border', hexToRgba(text, 0.12));
-    root.style.setProperty('--ws-ann-popup-shadow', '0 6px 28px rgba(0, 0, 0, 0.4)');
-    root.style.setProperty('--ws-ann-popup-input-bg', hexToRgba(text, 0.06));
-    root.style.setProperty('--ws-ann-popup-input-border', hexToRgba(text, 0.18));
-    root.style.setProperty('--ws-ann-popup-btn-hover', hexToRgba(text, 0.1));
-    root.style.setProperty('--ws-ann-popup-btn-primary-bg', hexToRgba(text, 0.1));
-    root.style.setProperty('--ws-ann-popup-btn-primary-hover', hexToRgba(text, 0.16));
-    root.style.setProperty('--ws-ann-popup-btn-danger-hover', 'rgba(255, 80, 80, 0.25)');
-    root.style.setProperty('--ws-ann-popup-btn-danger-text', '#ffb4b4');
-    root.style.setProperty('--ws-ann-popup-focus', hexToRgba(text, 0.35));
+    WSDomUtils.setExtensionUiTheme(theme, customProps);
   }
 
   function applyColors(newSettings) {
@@ -482,22 +451,19 @@ globalThis.WSAnnotations = (() => {
   async function persistGroups() {
     if (destroyed || !isTopFrame() || !isExtensionAlive()) return;
 
-    const local = getLocalStorage();
-    if (!local) return;
-
     const groups = serializeGroups();
-    const key = storageKey();
 
     try {
       if (!groups.length) {
-        await local.remove(key);
+        await WSAnnotationStorage.remove(getPageUrl());
         return;
       }
-      await local.set({
-        [key]: { url: getPageUrl(), groups, updatedAt: Date.now() }
-      });
-    } catch {
-      /* storage unavailable */
+      await WSAnnotationStorage.persist(getPageUrl(), { url: getPageUrl(), groups, updatedAt: Date.now() });
+    } catch (err) {
+      const quota = /quota/i.test(err?.message || '') || err?.name === 'QuotaExceededError';
+      globalThis.WSAnnotationPill?.showMessage?.(
+        quota ? 'Не удалось сохранить, хранилище заполнено' : 'Не удалось сохранить аннотации'
+      );
     }
   }
 
@@ -508,7 +474,8 @@ globalThis.WSAnnotations = (() => {
       try {
         window.top.postMessage({
           type: 'ws-annotation-event',
-          action: 'persist'
+          action: 'persist',
+          nonce: globalThis.__wsFrameNonce || ''
         }, '*');
       } catch {
         /* ignore */
@@ -518,10 +485,8 @@ globalThis.WSAnnotations = (() => {
 
   async function clearStorageForUrl() {
     if (destroyed || !isTopFrame() || !isExtensionAlive()) return;
-    const local = getLocalStorage();
-    if (!local) return;
     try {
-      await local.remove(storageKey());
+      await WSAnnotationStorage.remove(getPageUrl());
     } catch {
       /* storage unavailable */
     }
@@ -767,13 +732,8 @@ globalThis.WSAnnotations = (() => {
   async function restoreFromStorage() {
     if (destroyed || !isTopFrame() || !isExtensionAlive()) return;
 
-    const local = getLocalStorage();
-    if (!local) return;
-
     try {
-      const key = storageKey();
-      const stored = await local.get(key);
-      const data = stored[key];
+      const data = await WSAnnotationStorage.load(getPageUrl());
       if (!data?.groups?.length) return;
 
       for (const anchor of data.groups) {
@@ -964,6 +924,7 @@ globalThis.WSAnnotations = (() => {
       window.top.postMessage({
         type: 'ws-annotation-event',
         action: 'updateMeta',
+        nonce: globalThis.__wsFrameNonce || '',
         id,
         meta: { note: meta.note, createdAt: meta.createdAt }
       }, '*');
@@ -978,6 +939,7 @@ globalThis.WSAnnotations = (() => {
       window.top.postMessage({
         type: 'ws-annotation-event',
         action: 'deleteMeta',
+        nonce: globalThis.__wsFrameNonce || '',
         id
       }, '*');
     } catch {
@@ -1082,6 +1044,18 @@ globalThis.WSAnnotations = (() => {
   function onFrameMessage(event) {
     const msg = event.data;
     if (msg?.type !== 'ws-annotation-event') return;
+    if (!globalThis.__wsFrameNonce || msg.nonce !== globalThis.__wsFrameNonce) return;
+
+    let fromChild = false;
+    for (const frame of document.querySelectorAll('iframe')) {
+      try {
+        if (event.source === frame.contentWindow) {
+          fromChild = true;
+          break;
+        }
+      } catch { /* ignore */ }
+    }
+    if (!fromChild) return;
 
     if (msg.action === 'persist' && isTopFrame()) {
       persistGroups();

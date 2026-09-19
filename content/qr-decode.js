@@ -65,6 +65,7 @@ globalThis.WSQrDecode = (() => {
     popupEl.hidden = true;
     popupEl.setAttribute('role', 'dialog');
     popupEl.setAttribute('aria-modal', 'false');
+    WSDomUtils.decorateExtensionUi?.(popupEl);
     document.documentElement.appendChild(popupEl);
   }
 
@@ -223,12 +224,15 @@ globalThis.WSQrDecode = (() => {
           reject(new Error(response.error));
           return;
         }
-        if (!response?.buffer) {
+        const bytes = typeof response?.base64 === 'string'
+          ? (globalThis.WSArchiveBytes?.base64ToBytes?.(response.base64) || null)
+          : null;
+        if (!bytes?.byteLength) {
           reject(new Error('Пустой ответ'));
           return;
         }
 
-        resolve(new Blob([response.buffer], { type: response.mimeType || 'image/png' }));
+        resolve(new Blob([bytes], { type: response.mimeType || 'image/png' }));
       });
     });
   }

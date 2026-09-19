@@ -9,7 +9,7 @@ globalThis.WSMorphology = (() => {
   const STEM_RULES = [
     { pattern: /(овать|ировать)$/i, strip: 0, replace: (w) => w.replace(/(овать|ировать)$/i, '') },
     { pattern: /(ение|ание|ство|ость)$/i, strip: 0, replace: (w) => w.replace(/(ение|ание|ство|ость)$/i, '') },
-    { pattern: /(ия)$/i, strip: 0, replace: (w) => w.replace(/ия$/i, 'ия') },
+    { pattern: /(ия)$/i, strip: 0, replace: (w) => w.replace(/ия$/i, 'и') },
     { pattern: /(ский|цкий|ческий)$/i, strip: 0, replace: (w) => w.replace(/(ский|цкий|ческий)$/i, '') + 'ий' },
     { pattern: /(ая|яя|ое|ее|ые|ие|ой|ий|ый)$/i, strip: 0, replace: (w) => w.replace(/(ая|яя|ое|ее|ые|ие|ой|ий|ый)$/i, '') },
     { pattern: /(ами|ями|ах|ях|ов|ев|ей|ом|ем|ам|ям|у|ю|а|я|е|и|ы|о)$/i, strip: 0, replace: (w) => w.replace(/(ами|ями|ах|ях|ов|ев|ей|ом|ем|ам|ям|у|ю|а|я|е|и|ы|о)$/i, '') }
@@ -115,8 +115,40 @@ globalThis.WSMorphology = (() => {
     return candidates;
   }
 
+  function addCaseVariants(target, form) {
+    if (!form) return;
+    target.add(form);
+    const lower = form.toLowerCase();
+    target.add(lower);
+    target.add(form.toUpperCase());
+    if (lower.length) {
+      target.add(lower.charAt(0).toUpperCase() + lower.slice(1));
+    }
+  }
+
+  const INFLECTION_ENDINGS = [
+    '', 'а', 'я', 'у', 'ю', 'е', 'о', 'и', 'ы',
+    'ой', 'ей', 'ом', 'ем', 'ём', 'ам', 'ям',
+    'ов', 'ев', 'ёв', 'ах', 'ях', 'ами', 'ями',
+    'ью', 'ия', 'ии', 'ий', 'ья', 'ье'
+  ];
+
+  function generateRuleBasedForms(word) {
+    const forms = new Set();
+    const stems = generateLemmaCandidates(word);
+    stems.add(normalize(word));
+    for (const stem of stems) {
+      if (!stem || stem.length < 2) continue;
+      for (const ending of INFLECTION_ENDINGS) {
+        forms.add(stem + ending);
+      }
+    }
+    return forms;
+  }
+
   function fallbackForms(word, depth) {
-    const forms = new Set([word, word.toLowerCase()]);
+    const forms = new Set();
+    addCaseVariants(forms, word);
 
     const directLemma = findLemma(word);
     if (directLemma && dict?.[directLemma]) {
@@ -126,19 +158,21 @@ globalThis.WSMorphology = (() => {
       return forms;
     }
 
+    let foundInDict = false;
     for (const candidate of generateLemmaCandidates(word)) {
       const lemma = findLemma(candidate);
       if (lemma && dict?.[lemma]) {
+        foundInDict = true;
         for (const f of getLemmaForms(lemma, depth)) {
           forms.add(f);
         }
       }
     }
 
-    forms.add(word);
-    forms.add(word.toLowerCase());
-    if (word !== word.toLowerCase()) {
-      forms.add(word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+    if (!foundInDict) {
+      for (const f of generateRuleBasedForms(word)) {
+        forms.add(f);
+      }
     }
 
     return forms;
@@ -154,13 +188,12 @@ globalThis.WSMorphology = (() => {
       forms = fallbackForms(word, depth);
     }
 
-    forms.add(word);
-    forms.add(word.toLowerCase());
-    if (word !== word.toLowerCase()) {
-      forms.add(word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+    const withCase = new Set();
+    for (const form of forms) {
+      addCaseVariants(withCase, form);
     }
-
-    return forms;
+    addCaseVariants(withCase, word);
+    return withCase;
   }
 
   function expandQuery(query, options = {}) {
@@ -175,64 +208,16 @@ globalThis.WSMorphology = (() => {
     if (!useMorphology) {
       const set = new Set([trimmed]);
       if (!caseSensitive) {
-        set.add(trimmed.toLowerCase());
-        set.add(trimmed.toUpperCase());
-        set.add(trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase());
+        addCaseVariants(set, trimmed);
       }
       return set;
     }
 
-    const allForms = new Set();
-    for (const form of expandWord(trimmed, morphDepth)) {
-      allForms.add(form);
-      if (!caseSensitive) {
-        allForms.add(form.toLowerCase());
-        allForms.add(form.toUpperCase());
-        allForms.add(form.charAt(0).toUpperCase() + form.slice(1).toLowerCase());
-      }
-    }
-
-    return allForms;
+    return expandWord(trimmed, morphDepth);
   }
-
-  const MAX_PHRASE_COMBINATIONS = 2000;
 
   function shouldUseMorphology(options = {}) {
     return Boolean(options.useMorphology || options.phraseMode === 'morph');
-  }
-
-  function expandPhraseWords(words, options) {
-    const { useMorphology = false, morphDepth = 'basic' } = options;
-    const perWord = words.map((word) => {
-      if (!useMorphology) {
-        return [word];
-      }
-      return [...expandWord(word, morphDepth)];
-    });
-
-    let total = 1;
-    for (const list of perWord) {
-      total *= list.length;
-      if (total > MAX_PHRASE_COMBINATIONS) {
-        return null;
-      }
-    }
-
-    const combinations = [];
-    function combine(index, current) {
-      if (index === perWord.length) {
-        combinations.push([...current]);
-        return;
-      }
-      for (const form of perWord[index]) {
-        current.push(form);
-        combine(index + 1, current);
-        current.pop();
-        if (combinations.length >= MAX_PHRASE_COMBINATIONS) return;
-      }
-    }
-    combine(0, []);
-    return combinations;
   }
 
   function getPhraseWordFormSets(words, options = {}) {
@@ -241,14 +226,12 @@ globalThis.WSMorphology = (() => {
     const caseSensitive = options.caseSensitive !== false;
 
     return words.map((word) => {
-      const forms = useMorphology ? expandWord(word, morphDepth) : new Set([word]);
-      const set = new Set(forms);
+      if (useMorphology) {
+        return expandWord(word, morphDepth);
+      }
+      const set = new Set([word]);
       if (!caseSensitive) {
-        for (const form of forms) {
-          set.add(form.toLowerCase());
-          set.add(form.toUpperCase());
-          set.add(form.charAt(0).toUpperCase() + form.slice(1).toLowerCase());
-        }
+        addCaseVariants(set, word);
       }
       return set;
     });
@@ -258,10 +241,9 @@ globalThis.WSMorphology = (() => {
     loadDictionary,
     expandQuery,
     expandWord,
-    expandPhraseWords,
+    generateLemmaCandidates,
     getPhraseWordFormSets,
     shouldUseMorphology,
-    normalize,
-    MAX_PHRASE_COMBINATIONS
+    normalize
   };
 })();

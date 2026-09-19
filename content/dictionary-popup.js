@@ -71,6 +71,7 @@ globalThis.WSDictionaryPopup = (() => {
     popupEl.hidden = true;
     popupEl.setAttribute('role', 'dialog');
     popupEl.setAttribute('aria-modal', 'false');
+    WSDomUtils.decorateExtensionUi?.(popupEl);
     document.documentElement.appendChild(popupEl);
   }
 
