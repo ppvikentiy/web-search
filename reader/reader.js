@@ -2,7 +2,7 @@
  * Reader tab: render extracted article, search, annotations.
  */
 (() => {
-  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '1.0.7';
+  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '1.0.8';
 
   let readerTabId = null;
   let payload = null;

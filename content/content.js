@@ -2,7 +2,7 @@
  * Content script entry: messaging, state, MutationObserver.
  */
 (() => {
-  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '1.0.7';
+  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '1.0.8';
 
   function isExtensionAlive() {
     try {
@@ -244,17 +244,21 @@
     return state.frameNonce;
   }
 
+  function hasMatchingFrameNonce(nonce) {
+    return Boolean(state.frameNonce) && nonce === state.frameNonce;
+  }
+
   function isTrustedTopMessage(event) {
     const msg = event.data;
     if (!msg || typeof msg !== 'object') return false;
-    if (state.frameNonce && msg.nonce !== state.frameNonce) return false;
+    if (!hasMatchingFrameNonce(msg.nonce)) return false;
     return event.source === window.top;
   }
 
   function isTrustedChildFrame(event) {
     const msg = event.data;
     if (!msg || typeof msg !== 'object') return false;
-    if (state.frameNonce && msg.nonce !== state.frameNonce) return false;
+    if (!hasMatchingFrameNonce(msg.nonce)) return false;
     for (const frame of document.querySelectorAll('iframe')) {
       try {
         if (event.source === frame.contentWindow) return true;

@@ -1044,7 +1044,7 @@ globalThis.WSAnnotations = (() => {
   function onFrameMessage(event) {
     const msg = event.data;
     if (msg?.type !== 'ws-annotation-event') return;
-    if (globalThis.__wsFrameNonce && msg.nonce !== globalThis.__wsFrameNonce) return;
+    if (!globalThis.__wsFrameNonce || msg.nonce !== globalThis.__wsFrameNonce) return;
 
     let fromChild = false;
     for (const frame of document.querySelectorAll('iframe')) {
