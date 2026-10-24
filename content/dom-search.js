@@ -55,106 +55,162 @@ globalThis.WSDomSearch = (() => {
     return roots.filter((r) => r.root);
   }
 
-  function buildTermPattern(term, wholeWord) {
-    return wholeWord ? wsBuildWholeWordPattern(term) : wsBuildSubstringPattern(term);
+  const BLOCK_TAGS = new Set([
+    'address', 'article', 'aside', 'blockquote', 'br', 'caption', 'dd', 'details',
+    'dialog', 'div', 'dl', 'dt', 'fieldset', 'figcaption', 'figure', 'footer',
+    'button', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hr', 'li',
+    'main', 'nav', 'ol', 'option', 'p', 'pre', 'section', 'select', 'summary',
+    'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'ul', 'svg', 'math'
+  ]);
+
+  function foldYo(value) {
+    return String(value || '').replace(/ё/g, 'е').replace(/Ё/g, 'Е');
   }
 
-  function buildQuickFilters(query, options, terms = null) {
-    const filters = new Set();
-    const trimmed = query.trim();
-    if (!trimmed) return filters;
+  function foldYoInPattern(pattern, caseSensitive) {
+    if (!caseSensitive) return pattern.replace(/[еёЕЁ]/g, '[её]');
+    return pattern.replace(/[её]/g, '[её]').replace(/[ЕЁ]/g, '[ЕЁ]');
+  }
 
-    const addFilter = (value) => {
-      if (!value) return;
-      filters.add(value);
+  function buildTermPattern(term, wholeWord, caseSensitive) {
+    const base = wholeWord ? wsBuildWholeWordPattern(term) : wsBuildSubstringPattern(term);
+    return foldYoInPattern(base, caseSensitive);
+  }
+
+  function compileWildcardSource(value, wholeWord, caseSensitive) {
+    let literals = 0;
+    let wildcards = 0;
+    let body = '';
+    for (const ch of value) {
+      if (ch === '*') {
+        wildcards += 1;
+        body += '[\\p{L}\\p{N}_]*';
+        continue;
+      }
+      if (ch === '?') {
+        wildcards += 1;
+        literals += 1;
+        body += '[\\p{L}\\p{N}_]';
+        continue;
+      }
+      if (/[\p{L}\p{N}]/u.test(ch)) literals += 1;
+      const yo = ch === 'е' || ch === 'ё' || ch === 'Е' || ch === 'Ё';
+      if (yo) {
+        if (!caseSensitive || ch === 'е' || ch === 'ё') body += '[её]';
+        else body += '[ЕЁ]';
+      } else {
+        body += wsEscapeRegex(ch);
+      }
+    }
+    if (!literals || wildcards > 2) return null;
+    const prefix = wholeWord ? '(?<![\\p{L}\\p{N}_])' : '';
+    const suffix = wholeWord ? '(?![\\p{L}\\p{N}_])' : '';
+    return prefix + body + suffix;
+  }
+
+  function formsForAtom(atom, options) {
+    const value = atom.value;
+    if (!value) return [];
+    if (atom.quoted || !options.useMorphology) {
+      const forms = [value];
       if (!options.caseSensitive) {
-        filters.add(value.toLowerCase());
+        forms.push(value.toLowerCase(), value.toUpperCase());
+        const lower = value.toLowerCase();
+        if (lower) forms.push(lower.charAt(0).toUpperCase() + lower.slice(1));
       }
-    };
-
-    addFilter(trimmed);
-    if (terms) {
-      for (const term of terms) {
-        addFilter(term);
-      }
+      return [...new Set(forms)];
     }
-
-    return filters;
+    try {
+      return [...WSMorphology.expandWord(value, options.morphDepth || 'basic')];
+    } catch {
+      return [value];
+    }
   }
 
-  function passesQuickFilter(text, quickFilters, caseSensitive = true) {
-    if (!quickFilters?.size) return true;
-    const haystack = caseSensitive ? text : text.toLowerCase();
-    for (const filter of quickFilters) {
-      if (!filter) continue;
-      const needle = caseSensitive ? filter : filter.toLowerCase();
-      if (haystack.includes(needle)) return true;
-    }
-    return false;
+  function needlesForAtom(atom) {
+    if (!atom.wildcard) return atom.value ? [atom.value] : [];
+    const parts = atom.value.split(/[*?]+/).filter((part) => part.length >= 2);
+    if (parts.length) return parts;
+    return atom.value.split(/[*?]+/).filter((part) => part.length >= 1);
   }
 
-  function buildSingleMatcher(terms, options) {
+  function compileAtom(atom, options) {
     const wholeWord = options.matchMode === 'whole' || options.wholeWord;
-    const flags = options.caseSensitive ? 'gu' : 'giu';
-    const escapedTerms = [...terms]
-      .filter(Boolean)
-      .sort((a, b) => b.length - a.length || a.localeCompare(b))
-      .map((t) => buildTermPattern(t, wholeWord));
+    const caseSensitive = Boolean(options.caseSensitive);
+    const flagsG = caseSensitive ? 'gu' : 'giu';
+    const flagsY = caseSensitive ? 'yu' : 'yiu';
+    let source = null;
+    let needles = [];
 
-    if (!escapedTerms.length) return null;
+    if (atom.wildcard) {
+      source = compileWildcardSource(atom.value, wholeWord, caseSensitive);
+      if (!source) return null;
+      needles = needlesForAtom(atom);
+    } else {
+      const forms = formsForAtom(atom, options)
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length || a.localeCompare(b));
+      if (!forms.length) return null;
+      source = forms.map((form) => buildTermPattern(form, wholeWord, caseSensitive)).join('|');
+      needles = forms;
+    }
 
-    const source = escapedTerms.join('|');
     try {
       return {
-        type: 'regex',
-        regex: new RegExp(source, flags),
-        quickFilters: buildQuickFilters([...terms][0] || '', options, terms)
+        quoted: Boolean(atom.quoted),
+        needles,
+        searchRegex: new RegExp(source, flagsG),
+        stickyRegex: new RegExp(source, flagsY)
       };
     } catch {
       return null;
     }
   }
 
-  function buildPhraseMatcher(query, options) {
-    const words = wsSplitWords(query);
-    if (!words.length) return null;
-
-    const wholeWord = options.matchMode === 'whole' || options.wholeWord;
-    const flags = options.caseSensitive ? 'gu' : 'giu';
-    const { phraseMode } = options;
-
-    const wordPatterns = words.map((w) => buildTermPattern(w, wholeWord));
-    const separator = phraseMode === 'flexible' ? '[\\s\\p{P}]+' : '\\s+';
-
-    try {
-      return {
-        type: 'regex',
-        regex: new RegExp(wordPatterns.join(separator), flags),
-        quickFilters: buildQuickFilters(query, options, words)
-      };
-    } catch {
-      return null;
+  function compilePhrase(atoms, options) {
+    const compiled = [];
+    for (const atom of atoms) {
+      const next = compileAtom(atom, options);
+      if (next) compiled.push(next);
     }
+    return compiled;
   }
 
-  function buildPhraseSequentialMatcher(query, options) {
-    const words = wsSplitWords(query);
-    if (!words.length) return null;
+  function compileMatcher(query, options) {
+    const parsed = globalThis.WSQueryParser?.parse(query) || { branches: [], truncated: false };
+    const branches = [];
 
-    const wordFormSets = WSMorphology.getPhraseWordFormSets(words, options);
-    const filterTerms = wordFormSets.flatMap((set) => [...set]);
+    for (const branch of parsed.branches || []) {
+      const required = [];
+      for (const phrase of branch.required || []) {
+        const compiled = compilePhrase(phrase, options);
+        if (compiled.length) required.push(compiled);
+      }
+      if (!required.length) continue;
+      const banned = [];
+      for (const phrase of branch.banned || []) {
+        const compiled = compilePhrase(phrase, options);
+        if (compiled.length) banned.push(compiled);
+      }
+      branches.push({ required, banned });
+    }
+
+    if (!branches.length) return null;
+
+    let warning = null;
+    if (parsed.truncated) {
+      warning = 'Запрос слишком сложный, часть вариантов пропущена';
+    }
 
     return {
-      type: 'phrase',
-      words,
-      wordFormSets,
+      type: 'query',
+      branches,
+      warning,
       options: {
-        caseSensitive: options.caseSensitive,
+        caseSensitive: Boolean(options.caseSensitive),
         wholeWord: options.matchMode === 'whole' || options.wholeWord,
-        phraseMode: options.phraseMode
-      },
-      quickFilters: buildQuickFilters(query, options, filterTerms),
-      warning: null
+        phraseMode: options.phraseMode || 'exact'
+      }
     };
   }
 
@@ -174,33 +230,7 @@ globalThis.WSDomSearch = (() => {
     const trimmed = query.trim();
     if (!trimmed) return null;
 
-    let matcher = null;
-
-    if (wsIsPhrase(trimmed)) {
-      const usePhraseMorph = options.phraseMode === 'morph' || options.useMorphology;
-      if (usePhraseMorph) {
-        matcher = buildPhraseSequentialMatcher(trimmed, options);
-      } else {
-        matcher = buildPhraseMatcher(trimmed, options);
-      }
-    } else {
-      let terms;
-      if (options.useMorphology) {
-        terms = WSMorphology.expandQuery(trimmed, options);
-      } else {
-        terms = new Set([trimmed]);
-        if (!options.caseSensitive) {
-          terms.add(trimmed.toLowerCase());
-          terms.add(trimmed.toUpperCase());
-          terms.add(trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase());
-        }
-      }
-      matcher = buildSingleMatcher(terms, options);
-      if (matcher) {
-        matcher.quickFilters = buildQuickFilters(trimmed, options, terms);
-      }
-    }
-
+    const matcher = compileMatcher(trimmed, options);
     matcherCache = { key: cacheKey, matcher };
     return matcher;
   }
@@ -285,18 +315,305 @@ globalThis.WSDomSearch = (() => {
     return matches;
   }
 
-  function findMatchesInNode(textNode, matcher) {
-    const text = textNode.nodeValue;
-    const caseSensitive = matcher.type === 'phrase'
-      ? Boolean(matcher.options?.caseSensitive)
-      : !matcher.regex?.flags?.includes('i');
-    if (!passesQuickFilter(text, matcher.quickFilters, caseSensitive)) return [];
+  function gapIsFlexible(prev, next, phraseMode) {
+    if (prev?.quoted && next?.quoted) return false;
+    return phraseMode === 'flexible';
+  }
 
-    if (matcher.type === 'phrase') {
-      return findPhraseMatchesInText(text, matcher);
+  function matchAtomAt(text, pos, atom) {
+    if (!atom?.stickyRegex) return -1;
+    atom.stickyRegex.lastIndex = pos;
+    const match = atom.stickyRegex.exec(text);
+    if (!match || match.index !== pos || !match[0].length) return -1;
+    return pos + match[0].length;
+  }
+
+  function findSequenceMatches(text, atoms, phraseMode) {
+    if (!atoms.length) return [];
+    const matches = [];
+    const first = atoms[0].searchRegex;
+    first.lastIndex = 0;
+    let match;
+    while ((match = first.exec(text)) !== null) {
+      let pos = match.index + match[0].length;
+      let ok = true;
+      for (let w = 1; w < atoms.length; w += 1) {
+        const next = skipSeparator(text, pos, gapIsFlexible(atoms[w - 1], atoms[w], phraseMode));
+        if (next === pos) {
+          ok = false;
+          break;
+        }
+        const end = matchAtomAt(text, next, atoms[w]);
+        if (end < 0) {
+          ok = false;
+          break;
+        }
+        pos = end;
+      }
+      if (ok && pos > match.index) {
+        matches.push({ start: match.index, length: pos - match.index, text: text.slice(match.index, pos) });
+        first.lastIndex = pos;
+      } else if (match[0].length === 0) {
+        first.lastIndex += 1;
+      }
+    }
+    return matches;
+  }
+
+  function branchBanned(text, branch, phraseMode) {
+    for (const phrase of branch.banned) {
+      if (findSequenceMatches(text, phrase, phraseMode).length) return true;
+    }
+    return false;
+  }
+
+  function collapseOverlaps(matches) {
+    matches.sort((a, b) => a.start - b.start || b.length - a.length);
+    const picked = [];
+    let end = -1;
+    for (const match of matches) {
+      if (match.start < end) continue;
+      picked.push(match);
+      end = match.start + match.length;
+    }
+    return picked;
+  }
+
+  function segmentMightMatch(text, matcher) {
+    const hay = foldYo(text).toLowerCase();
+    for (const branch of matcher.branches) {
+      let ok = true;
+      for (const phrase of branch.required) {
+        const needles = phrase.flatMap((atom) => atom.needles || []);
+        if (!needles.length) continue;
+        if (!needles.some((needle) => hay.includes(foldYo(needle).toLowerCase()))) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) return true;
+    }
+    return false;
+  }
+
+  function findCompiledMatches(text, matcher) {
+    if (!text || !matcher?.branches?.length) return [];
+    const phraseMode = matcher.options?.phraseMode || 'exact';
+    const all = [];
+    for (const branch of matcher.branches) {
+      if (branchBanned(text, branch, phraseMode)) continue;
+      const lists = branch.required.map((phrase) => findSequenceMatches(text, phrase, phraseMode));
+      if (lists.some((list) => !list.length)) continue;
+      for (const list of lists) all.push(...list);
+    }
+    return collapseOverlaps(all);
+  }
+
+  function nodeSlice(piece, segLo, segHi) {
+    const localStart = segLo - piece.start;
+    const localEnd = segHi - piece.start;
+    if (piece.map) {
+      const nodeStart = piece.map[localStart];
+      const nodeEnd = piece.map[localEnd - 1] + 1;
+      return {
+        start: nodeStart,
+        length: nodeEnd - nodeStart,
+        text: piece.node.nodeValue.slice(nodeStart, nodeEnd)
+      };
+    }
+    return {
+      start: localStart,
+      length: localEnd - localStart,
+      text: piece.node.nodeValue.slice(localStart, localEnd)
+    };
+  }
+
+  function locateMatchPieces(segment, match) {
+    const end = match.start + match.length;
+    const parts = [];
+    for (const piece of segment.pieces) {
+      if (!piece.node) continue;
+      const lo = Math.max(piece.start, match.start);
+      const hi = Math.min(piece.end, end);
+      if (hi <= lo) continue;
+      const slice = nodeSlice(piece, lo, hi);
+      if (!slice.text || !slice.text.trim()) continue;
+      parts.push({ node: piece.node, ...slice });
+    }
+    return parts;
+  }
+
+  function applyRangesToTextNode(textNode, ranges, doc) {
+    const text = textNode.nodeValue || '';
+    const parent = textNode.parentNode;
+    if (!parent || !ranges.length) return [];
+
+    const ordered = [...ranges].sort((a, b) => a.start - b.start || b.length - a.length);
+    const frag = doc.createDocumentFragment();
+    const marks = [];
+    let last = 0;
+
+    for (const range of ordered) {
+      const start = Math.max(0, range.start);
+      const end = Math.min(text.length, range.start + range.length);
+      if (start < last || end <= start) continue;
+      if (start > last) {
+        frag.appendChild(doc.createTextNode(text.slice(last, start)));
+      }
+      const mark = doc.createElement('mark');
+      mark.className = MARK_CLASS;
+      mark.setAttribute('data-ws-group', range.groupId);
+      if (range.primary) {
+        mark.setAttribute('data-ws-primary', '1');
+        mark.setAttribute('data-ws-mark-id', range.groupId);
+      }
+      mark.textContent = text.slice(start, end);
+      frag.appendChild(mark);
+      marks.push(mark);
+      last = end;
     }
 
-    return findRegexMatchesInText(text, matcher.regex);
+    if (last < text.length) {
+      frag.appendChild(doc.createTextNode(text.slice(last)));
+    }
+
+    parent.replaceChild(frag, textNode);
+    return marks;
+  }
+
+  function highlightSegmentMatches(segment, found, doc) {
+    const perNode = new Map();
+    for (const match of found) {
+      const parts = locateMatchPieces(segment, match);
+      if (!parts.length) continue;
+      const groupId = String(++markIdCounter);
+      parts.forEach((part, index) => {
+        let list = perNode.get(part.node);
+        if (!list) {
+          list = [];
+          perNode.set(part.node, list);
+        }
+        list.push({
+          start: part.start,
+          length: part.length,
+          text: part.text,
+          groupId,
+          primary: index === 0
+        });
+      });
+      match.groupId = groupId;
+    }
+
+    const primaryByGroup = new Map();
+    for (const [node, ranges] of perNode) {
+      for (const mark of applyRangesToTextNode(node, ranges, doc)) {
+        if (mark.getAttribute('data-ws-primary') === '1') {
+          primaryByGroup.set(mark.getAttribute('data-ws-group'), mark);
+        }
+      }
+    }
+
+    const ordered = [];
+    for (const match of found) {
+      const mark = match.groupId ? primaryByGroup.get(match.groupId) : null;
+      if (mark) ordered.push(mark);
+    }
+    return ordered;
+  }
+
+  function appendSegmentText(segment, node, value, preserveSpace, pending) {
+    if (!value) return pending;
+    if (!preserveSpace && !value.trim()) {
+      return true;
+    }
+
+    let chunk = '';
+    const map = [];
+    let needsMap = false;
+    for (let i = 0; i < value.length; i += 1) {
+      const ch = value[i];
+      if (ch === '\u00ad' || ch === '\u200b' || ch === '\u200c' || ch === '\u200d' || ch === '\ufeff') {
+        needsMap = true;
+        continue;
+      }
+      chunk += ch;
+      map.push(i);
+    }
+    if (!chunk) return pending;
+
+    if (!preserveSpace && pending && segment.text && !/\s$/u.test(segment.text) && !/^\s/u.test(chunk)) {
+      segment.text += ' ';
+    }
+    const start = segment.text.length;
+    segment.text += chunk;
+    const piece = { node, start, end: start + chunk.length };
+    if (needsMap) piece.map = map;
+    segment.pieces.push(piece);
+    return false;
+  }
+
+  function collectSearchSegments(root, config) {
+    const segments = [];
+    if (!root) return segments;
+    let current = null;
+    let pendingSpace = false;
+
+    function flush() {
+      if (current?.text?.trim()) segments.push(current);
+      current = null;
+      pendingSpace = false;
+    }
+
+    function ensure() {
+      if (!current) current = { text: '', pieces: [] };
+      return current;
+    }
+
+    function walk(node, preserveSpace) {
+      if (!node) return;
+      if (node.nodeType === 3) {
+        if (WSDomUtils.isExcludedNode(node, config)) return;
+        pendingSpace = appendSegmentText(ensure(), node, node.nodeValue || '', preserveSpace, pendingSpace);
+        return;
+      }
+      if (node.nodeType !== 1 && node.nodeType !== 11) return;
+      if (node.nodeType === 1 && WSDomUtils.isExcludedNode(node, config)) return;
+
+      const tag = node.tagName ? node.tagName.toLowerCase() : '';
+      if (tag === 'template' || tag === 'iframe' || tag === 'object' || node.hidden) return;
+      if (tag === 'br' || tag === 'hr') {
+        flush();
+        return;
+      }
+
+      const preserve = preserveSpace || tag === 'pre';
+      const blocked = BLOCK_TAGS.has(tag) && node !== root;
+      if (blocked) flush();
+      for (const child of node.childNodes || []) walk(child, preserve);
+      if (blocked) flush();
+    }
+
+    walk(root, false);
+    flush();
+    return segments;
+  }
+
+  function searchRoots(roots, matcher, settings) {
+    const excludeConfig = getExcludeConfig(settings);
+    const matches = [];
+
+    for (const root of roots) {
+      const doc = root?.ownerDocument || document;
+      const segments = collectSearchSegments(root, excludeConfig);
+      for (const segment of segments) {
+        if (!segmentMightMatch(segment.text, matcher)) continue;
+        const found = findCompiledMatches(segment.text, matcher);
+        if (!found.length) continue;
+        matches.push(...highlightSegmentMatches(segment, found, doc));
+      }
+    }
+
+    return matches;
   }
 
   function clearHighlightApi() {
@@ -322,92 +639,7 @@ globalThis.WSDomSearch = (() => {
     }
   }
 
-  function canUseHighlightApiForNode(textNode) {
-    if (!useHighlightApi) return false;
-    const root = textNode.getRootNode?.();
-    return root === document || root === document.documentElement;
-  }
-
-  function createRangeForMatch(textNode, match) {
-    const range = document.createRange();
-    range.setStart(textNode, match.start);
-    range.setEnd(textNode, match.start + match.length);
-    return range;
-  }
-
-  function highlightInNode(textNode, matcher) {
-    const text = textNode.nodeValue;
-    const doc = textNode.ownerDocument || document;
-    const matchList = findMatchesInNode(textNode, matcher);
-    if (!matchList.length) return [];
-
-    if (useHighlightApi && canUseHighlightApiForNode(textNode)) {
-      try {
-        const marks = [];
-        let lastHighlight = 0;
-        for (const m of matchList) {
-          if (m.start < lastHighlight) continue;
-          const range = createRangeForMatch(textNode, m);
-          highlightRanges.push(range);
-          const mark = doc.createElement('mark');
-          mark.className = MARK_CLASS;
-          mark.setAttribute('data-ws-mark-id', String(++markIdCounter));
-          mark._wsRange = range;
-          mark.textContent = m.text;
-          marks.push(mark);
-          lastHighlight = m.start + m.length;
-        }
-        if (highlightRanges.length) {
-          CSS.highlights.set(HIGHLIGHT_NAME, new Highlight(...highlightRanges));
-        }
-        return marks;
-      } catch {
-        useHighlightApi = false;
-        highlightRanges.length = 0;
-      }
-    }
-
-    const marks = [];
-    const frag = doc.createDocumentFragment();
-    let last = 0;
-
-    for (const m of matchList) {
-      if (m.start < last) continue;
-      if (m.start > last) {
-        frag.appendChild(doc.createTextNode(text.slice(last, m.start)));
-      }
-      const mark = doc.createElement('mark');
-      mark.className = MARK_CLASS;
-      mark.setAttribute('data-ws-mark-id', String(++markIdCounter));
-      mark.textContent = m.text;
-      frag.appendChild(mark);
-      marks.push(mark);
-      last = m.start + m.length;
-    }
-
-    if (last < text.length) {
-      frag.appendChild(doc.createTextNode(text.slice(last)));
-    }
-
-    textNode.parentNode.replaceChild(frag, textNode);
-    return marks;
-  }
-
-  function searchRoots(roots, matcher, settings) {
-    const excludeConfig = getExcludeConfig(settings);
-    const matches = [];
-
-    for (const root of roots) {
-      const textNodes = WSDomUtils.collectTextNodesFromRoot(root, excludeConfig, root.ownerDocument || document);
-      for (const node of textNodes) {
-        matches.push(...highlightInNode(node, matcher));
-      }
-    }
-
-    return matches;
-  }
-
-  async function searchFull(query, options, settings) {
+  async function searchFull(query, options, settings, rootOverride = null) {
     clearHighlights();
     applyHighlightColors(settings);
 
@@ -416,7 +648,9 @@ globalThis.WSDomSearch = (() => {
       return { matches: [], total: 0, currentIndex: -1, warning: null };
     }
 
-    const roots = collectRoots(settings).map((r) => r.root);
+    const roots = rootOverride
+      ? [rootOverride]
+      : collectRoots(settings).map((r) => r.root);
     const matches = searchRoots(roots, matcher, settings);
 
     return {
@@ -467,9 +701,25 @@ globalThis.WSDomSearch = (() => {
     WSDomUtils.scrollElementIntoView(element);
   }
 
+  function groupMarks(mark) {
+    if (!mark?.getAttribute) return mark ? [mark] : [];
+    const group = mark.getAttribute('data-ws-group');
+    const root = typeof mark.getRootNode === 'function' ? mark.getRootNode() : document;
+    if (!group || !root?.querySelectorAll) return [mark];
+    const list = root.querySelectorAll(`mark.${MARK_CLASS}[data-ws-group="${group}"]`);
+    return list.length ? [...list] : [mark];
+  }
+
   function setCurrentMatch(matches, index, { scroll = false } = {}) {
-    for (const m of matches) {
-      m?.classList?.remove(CURRENT_CLASS);
+    const roots = new Set();
+    for (const mark of matches) {
+      const root = mark?.getRootNode?.() || document;
+      if (root) roots.add(root);
+    }
+    for (const root of roots) {
+      root.querySelectorAll?.(`mark.${MARK_CLASS}.${CURRENT_CLASS}`)?.forEach((el) => {
+        el.classList.remove(CURRENT_CLASS);
+      });
     }
 
     if (supportsHighlightApi && highlightRanges.length) {
@@ -483,7 +733,9 @@ globalThis.WSDomSearch = (() => {
     const current = matches[index];
     if (!current?.isConnected && !current?._wsRange) return -1;
 
-    current.classList?.add(CURRENT_CLASS);
+    for (const mark of groupMarks(current)) {
+      mark.classList?.add(CURRENT_CLASS);
+    }
 
     if (supportsHighlightApi && current._wsRange) {
       currentHighlightRange = current._wsRange;
@@ -576,6 +828,10 @@ globalThis.WSDomSearch = (() => {
     mergeIncrementalMatches,
     collectRoots,
     getExcludeConfig,
-    findPhraseMatchesInText
+    findPhraseMatchesInText,
+    compileMatcher,
+    findCompiledMatches,
+    collectSearchSegments,
+    locateMatchPieces
   };
 })();

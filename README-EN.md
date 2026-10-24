@@ -2,11 +2,11 @@
 
 [Русский](README.md)
 
-A Chromium-based browser extension (Chrome, Edge, and compatible browsers) for on-page search with Russian morphology, text annotations, reader mode, offline page archives, a personal dictionary, and QR tools.
+A Chromium-based browser extension (Chrome, Edge, and compatible browsers) for on-page search with Russian morphology, text annotations, reader mode, and a personal dictionary.
 
 **Repository:** [https://github.com/ppvikentiy/web-search](https://github.com/ppvikentiy/web-search)  
 **License:** [GNU General Public License v3.0](LICENSE) ([GPLv3](https://www.gnu.org/licenses/gpl-3.0.html))  
-**Version:** 1.5.0 (Manifest V3)
+**Version:** 2.0.0 (Manifest V3)
 
 **Display name in the browser:** «Поиск слов на странице» (Russian UI by default).
 
@@ -21,9 +21,7 @@ A Chromium-based browser extension (Chrome, Edge, and compatible browsers) for o
 - [On-page search](#on-page-search)
 - [Annotations](#annotations)
 - [Reader mode](#reader-mode)
-- [Offline archive](#offline-archive)
 - [Dictionary](#dictionary)
-- [QR codes](#qr-codes)
 - [Settings](#settings)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Export](#export)
@@ -40,7 +38,7 @@ A Chromium-based browser extension (Chrome, Edge, and compatible browsers) for o
 
 ## Why it exists
 
-The browser’s built-in find does not understand Russian word forms: searching for «кот» will not match «кота», «коту», or «котами». This extension searches with morphology, highlights matches, lets you mark quotes with notes, open articles in a clean reader, save pages as ZIP archives for offline viewing, and keep a personal glossary of terms.
+The browser’s built-in find does not understand Russian word forms: searching for «кот» will not match «кота», «коту», or «котами». This extension searches with morphology, highlights matches, lets you mark quotes with notes, open articles in a clean reader, and keep a personal glossary of terms.
 
 Everything runs locally in the browser: no account, no cloud, and no build step required before install.
 
@@ -50,13 +48,11 @@ Everything runs locally in the browser: no account, no cloud, and no build step 
 
 | Module | Summary |
 |--------|---------|
-| **Search** | Words and phrases; case; whole word / substring; morphology; iframes and Shadow DOM |
+| **Search** | Words and phrases across tags; case; whole word; morphology; `\|` `&` quotes `-word` and wildcards; iframes and Shadow DOM |
 | **Highlighting** | Colors for normal and current match; “N of M” navigation |
 | **Annotations** | Quote highlights, notes, export, bibliography (GOST / APA / MLA / Chicago) |
 | **Reader** | Mozilla Readability + DOMPurify; in-article search and annotations; Markdown |
-| **Offline archive** | Self-contained ZIP (`index.html` + assets), journal, and built-in viewer |
 | **Dictionary** | Folders, tags, word forms, JSON import/export, lookup from selection |
-| **QR** | QR for the current page (copy / PNG) and decode QR from images |
 | **Sidebar** | Same search and annotation tools docked at the page edge |
 
 ---
@@ -100,7 +96,7 @@ After code changes, click **Reload** on the extension card.
 
 1. Open a normal `http://` or `https://` page (not `chrome://` / `edge://`).
 2. Click the extension icon.
-3. Enter a word or phrase → **Find** (or press Enter).
+3. Enter a word, phrase, or compound query → **Find** (or press Enter).
 4. Step through matches with the popup arrows or **F3** / **Ctrl+G**.
 5. Enable **Word forms** to search Russian inflections.
 6. Enable **Annotation mode**, select text — a quote with note and export appears.
@@ -121,14 +117,32 @@ After code changes, click **Reload** on the extension card.
 | Option | Description |
 |--------|-------------|
 | **Match case** | «Дом» and «дом» are different matches |
-| **Whole word** | Do not match inside other words («кот» ≠ «который») |
+| **Whole word** | Do not match inside other words («кот» ≠ «который»). Applies to every word in a phrase |
 | **Word forms** | Russian morphology: «кот» → «кота», «коту», … |
 | **Phrase mode** | Exact / flexible (spaces & punctuation) / morphology per word |
 | **Match mode** | Whole word or substring |
 | **Iframe / Shadow DOM** | Optional search in nested documents and shadow trees |
 | **Exclusions** | HTML tags and CSS selectors to skip |
 
-Matches are highlighted on the page; the active match uses a separate color. A counter shows the current position among all hits.
+Matches are highlighted on the page; the active match uses a separate color. A phrase split by tags is highlighted in pieces and counted once.
+
+Text is gathered per block: paragraph, heading, list item, or table cell. Words broken by a link or emphasis are still one phrase. **ё** and **е** match. Soft hyphens are ignored.
+
+### Query language
+
+Parsing lives in `lib/query-parser.js`. Operators work without spaces: `кот|пёс`.
+
+| Input | What it finds |
+|-------|----------------|
+| `кот сидел` | Those words in order |
+| `кот \| пёс` | Either word |
+| `кот & пёс` | Both words in the same block, any order |
+| `(кот \| кошка) сидел` | Grouping: «кот сидел» or «кошка сидел» |
+| `"exact phrase"` or `«точная фраза»` | Literal text, no word forms and no wildcards |
+| `-word` | A block that contains this word is skipped |
+| `кол*` | Wildcard: `*` is any ending, `?` is one character |
+
+`|` binds looser than `&`: `кот & пёс | лиса` means «кот and пёс» or «лиса». Quotes treat the inside as plain text, so `"AT&T"` is not split by an operator. A query with more than 32 alternatives is truncated.
 
 ---
 
@@ -168,45 +182,10 @@ Open from the popup (book icon), the context menu **Open in reader**, or from in
 - Search within the article (including morphology)
 - Annotation mode and quote list
 - Appearance: font size, line height, column width, background color
+- A table of contents from the article headings, when there are at least two
 - **Back to original**
 - Follow in-article links (extract the next article into the same reader)
 - Export: download Markdown; copy plain text or Markdown (optionally with an annotations section)
-
----
-
-## Offline archive
-
-Saves a page as a self-contained ZIP for offline reading.
-
-### How to save
-
-- Download icon in the popup
-- **Offline archive** section in settings
-- Save by pasting a URL (background tab → archive → tab closed)
-
-### ZIP contents
-
-```
-archive.zip
-├── index.html      # page with rewritten local URLs
-├── README.txt      # short notes
-└── assets/
-    ├── styles/
-    ├── fonts/
-    ├── images/
-    └── files/
-```
-
-### Journal and viewing
-
-- Archive metadata lives in `chrome.storage.local`
-- ZIP bytes live in IndexedDB (with cache eviction by size)
-- Open from the journal, or pick / drop a ZIP → `archive/viewer.html`
-- You can re-select the file if the cache was cleared
-
-Before collecting resources, the page is scrolled to load lazy images. Page scripts are not stored in the archive. Limits apply to page size, per-resource size, and resource count.
-
-By default, resource requests while building an archive are sent **with cookies** (`credentials: 'include'`) so authenticated images and styles can be saved. That means the extension may contact third-party hosts on your behalf during a save. Settings → Offline archive has an option to omit cookies.
 
 ---
 
@@ -224,33 +203,21 @@ Data is stored in `chrome.storage.local` (schema v2). While annotation mode is o
 
 ---
 
-## QR codes
-
-| Action | How |
-|--------|-----|
-| **Generate** | In the popup — QR for the current tab URL → copy link or download PNG |
-| **Scan** | Right-click an image → **Scan QR code** → text, copy, open URL |
-
-Decoding runs in the page or via an offscreen document when the image cannot be read directly.
-
----
-
 ## Settings
 
 Open via the gear in the popup or the extension options page (`settings/settings.html`). Changes auto-save to `chrome.storage.local` (no Google account). Use JSON export/import to move settings between devices.
 
 | Section | What you configure |
 |---------|-------------------|
-| **Search** | Case, whole word, morphology, phrase and match modes |
+| **Search** | Case, whole word, morphology, phrase and match modes, compound queries |
 | **Highlighting** | Match colors |
 | **Annotations** | Colors, style, popup theme, iframes, exclusions, storage cleanup |
-| **Quote export** | TXT / MD, fields (note, URL, title, date), templates `{text}` `{note}` `{url}` `{title}` `{date}` |
+| **Quote export** | TXT / MD, fields (note, URL, title, date, author, site, published date), templates `{text}` `{note}` `{url}` `{title}` `{date}` `{author}` `{site}` `{published}` |
 | **Literature export** | Preset: GOST, APA 7, MLA 9, Chicago |
 | **Morphology** | Depth: basic or extended |
 | **Dictionary** | Entry management |
 | **Search scope** | Iframes, Shadow DOM |
 | **Exclusions** | Tags and CSS selectors for search |
-| **Offline archive** | ZIP journal, prepare timeout, scroll delay, omit cookies on save |
 | **About** | Version, license, mission (RU / EN / UK) |
 
 Reset restores defaults from `lib/defaults.js`.
@@ -281,7 +248,7 @@ There are no global `commands` in `manifest.json` — shortcuts work on the page
 
 ### Literature
 
-Presets for web sources (no author field from the page):
+Presets for web sources. Author, publication date, and site name come from meta tags and schema.org when the page provides them:
 
 - **gost** — GOST (electronic resource)
 - **apa7** — APA 7th
@@ -296,10 +263,6 @@ Actions: copy a bibliographic citation or download `.txt`.
 - Copy plain text or Markdown
 - Optionally include an “Annotations” section
 
-### Archive
-
-- ZIP with `index.html`, `README.txt`, and an `assets/` folder
-
 ---
 
 ## Russian morphology
@@ -307,11 +270,12 @@ Actions: copy a bibliographic citation or download `.txt`.
 Engine: `content/morphology.js` + dictionary `content/morphology-dict.json`.
 
 - Offline lemma dictionary (hundreds of lemmas; thousands of basic and extended forms)
-- `ё` → `е` normalization
+- `ё` → `е` normalization in the dictionary; on-page search treats **ё** and **е** as the same letter even without morphology
 - Reverse form → lemma index
 - Depth: `basic` or `extended`
 - Heuristic stemming for Russian endings when a lemma is missing
-- Phrase mode `morph` expands each word (combination cap)
+- In a phrase or operator query, each unquoted word is expanded on its own
+- Quoted text is not inflected
 - Word boundaries are Cyrillic-aware (`lib/word-boundary.js`)
 
 Morphology is used in page search and in user-dictionary lookup.
@@ -323,13 +287,11 @@ Morphology is used in page search and in user-dictionary lookup.
 ```
 web-search/
 ├── manifest.json          # Manifest V3
-├── background/            # Service worker: menus, injection, reader, archive, QR
-├── content/               # In-page scripts: search, annotations, dictionary, QR, archive collect
+├── background/            # Service worker: menus, injection, reader
+├── content/               # In-page scripts: search, annotations, dictionary
 ├── popup/                 # Toolbar popup
-├── settings/              # Full options + dictionary + archive journal
+├── settings/              # Full options + dictionary
 ├── reader/                # Reader tab
-├── archive/               # Offline ZIP viewer
-├── offscreen/             # Blob URLs and QR decode outside the service worker
 ├── lib/                   # Shared modules and vendored libraries
 ├── icons/                 # Extension icons
 ├── LICENSE                # GPLv3
@@ -344,9 +306,6 @@ web-search/
 | Mozilla Readability | Article extraction |
 | DOMPurify | Reader HTML sanitization |
 | Turndown (+ GFM) | HTML → Markdown |
-| fflate | ZIP archives |
-| qrcode | QR generation |
-| jsQR | QR recognition |
 
 Everything needed is already in the repository; there are no external dependencies.
 
@@ -358,16 +317,12 @@ Everything needed is already in the repository; there are no external dependenci
 |------------|-----|
 | `activeTab` | Act on the current tab when the user invokes the extension |
 | `scripting` | Inject CSS/JS into pages |
-| `storage` | Settings, annotations, dictionary, journal, session data |
-| `contextMenus` | Right-click items: search, annotate, dictionary, QR, reader |
-| `tabs` | Reader/archive tabs, wait for load |
-| `offscreen` | Blob URLs for downloads and QR decode |
-| `downloads` | Save ZIP files |
-| `<all_urls>` | Inject and fetch resources across sites |
+| `storage` | Settings, annotations, dictionary, session data |
+| `contextMenus` | Right-click items: search, annotate, dictionary, reader |
+| `tabs` | Reader tabs, wait for load |
+| `<all_urls>` | Inject across sites |
 
 `web_accessible_resources`: `content/morphology-dict.json` — available to content scripts.
-
-Host permission is also used when saving an offline copy: the service worker fetches the page’s styles, fonts, and images. Those requests include the current session cookies by default.
 
 ---
 
@@ -392,7 +347,8 @@ node --test test/run.js
 - Does not work on restricted pages: `chrome://`, `edge://`, `about:`, or extension pages.
 - Cross-origin iframe search is limited by same-origin policy.
 - The morphology dictionary covers common lemmas, not all of Russian; heuristics apply for missing words.
-- Archives depend on resource availability and size limits; dynamic content after DOM freeze may differ from the live page.
+- A phrase and the `&` operator match inside one block, not across the whole page. `-word` hides matches in that entire block.
+- Queries with more than 32 alternatives are truncated.
 - There are no global extension hotkeys in Chrome settings — only in-page shortcuts.
 
 ---

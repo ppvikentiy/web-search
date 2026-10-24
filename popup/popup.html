@@ -24,17 +24,21 @@
 
     <div class="header-actions">
 
-    <button type="button" id="btn-qr-page" class="btn-icon" title="QR-код страницы" aria-label="QR-код страницы" data-ws-icon="qrCode" data-ws-icon-size="16"></button>
+    <button type="button" id="btn-reader" class="btn-icon icon-chip-btn" title="Открыть в читателе" aria-label="Открыть в читателе">
+      <span class="icon-chip icon-chip-sm" aria-hidden="true"><span data-ws-icon="bookOpen" data-ws-icon-size="16"></span></span>
+    </button>
 
-    <button type="button" id="btn-reader" class="btn-icon" title="Открыть в читателе" aria-label="Открыть в читателе" data-ws-icon="bookOpen" data-ws-icon-size="16"></button>
+    <button type="button" id="btn-reader-exit" class="btn-icon icon-chip-btn" title="К оригиналу" aria-label="К оригиналу" hidden>
+      <span class="icon-chip icon-chip-sm" aria-hidden="true"><span data-ws-icon="arrowLeft" data-ws-icon-size="16"></span></span>
+    </button>
 
-    <button type="button" id="btn-reader-exit" class="btn-icon" title="К оригиналу" aria-label="К оригиналу" hidden data-ws-icon="arrowLeft" data-ws-icon-size="16"></button>
+    <button type="button" id="btn-dock" class="btn-icon icon-chip-btn" title="Закрепить у края экрана" aria-label="Закрепить у края экрана">
+      <span class="icon-chip icon-chip-sm" aria-hidden="true"><span data-ws-icon="panelRight" data-ws-icon-size="16"></span></span>
+    </button>
 
-    <button type="button" id="btn-archive-offline" class="btn-icon" title="Сохранить страницу офлайн (.zip)" aria-label="Сохранить страницу офлайн" data-ws-icon="download" data-ws-icon-size="16"></button>
-
-    <button type="button" id="btn-dock" class="btn-icon" title="Закрепить у края экрана" aria-label="Закрепить у края экрана" data-ws-icon="panelRight" data-ws-icon-size="16"></button>
-
-    <button type="button" id="btn-settings" class="btn-icon" title="Настройки" aria-label="Настройки" data-ws-icon="settings" data-ws-icon-size="16"></button>
+    <button type="button" id="btn-settings" class="btn-icon icon-chip-btn" title="Настройки" aria-label="Настройки">
+      <span class="icon-chip icon-chip-sm" aria-hidden="true"><span data-ws-icon="settings" data-ws-icon-size="16"></span></span>
+    </button>
 
     </div>
 
@@ -64,33 +68,19 @@
 
 
 
-  <div id="qr-panel" class="qr-panel" hidden>
-
-    <img id="qr-image" class="qr-image" alt="QR-код страницы" width="180" height="180">
-
-    <p id="qr-url" class="qr-url"></p>
-
-    <div class="qr-actions">
-
-      <button type="button" id="btn-qr-copy" class="btn-qr-action">Скопировать ссылку</button>
-
-      <button type="button" id="btn-qr-download" class="btn-qr-action btn-qr-action-primary">Скачать PNG</button>
-
-    </div>
-
-  </div>
-
-
-
   <div class="search-row">
 
     <div class="search-input-wrap">
 
-      <span class="search-field-icon" aria-hidden="true" data-ws-icon="search" data-ws-icon-size="14"></span>
+      <span class="search-field-icon" aria-hidden="true">
+        <span class="icon-chip icon-chip-xs" data-ws-icon="search" data-ws-icon-size="14"></span>
+      </span>
 
-      <input type="text" id="query" placeholder="Слово или фраза…" autocomplete="off" spellcheck="false">
+      <input type="text" id="query" placeholder="Фраза, кот | пёс, -слово" autocomplete="off" spellcheck="false" title="Слова подряд — фраза, в том числе через теги. | или, &amp; оба в блоке, кавычки — точно, -слово пропускает блок, * маска. ё и е совпадают.">
 
-      <button type="button" id="btn-clear" class="btn-clear" hidden aria-label="Очистить поиск" title="Очистить" data-ws-icon="x" data-ws-icon-size="12"></button>
+      <button type="button" id="btn-clear" class="btn-clear icon-chip-btn" hidden aria-label="Очистить поиск" title="Очистить">
+        <span class="icon-chip icon-chip-xs" aria-hidden="true"><span data-ws-icon="x" data-ws-icon-size="12"></span></span>
+      </button>
 
     </div>
 
@@ -104,7 +94,7 @@
 
     <button type="button" id="btn-find-selection" class="btn-selection" title="Искать выделенный на странице текст">
 
-      <span data-ws-icon="textSelect" data-ws-icon-size="14"></span>
+      <span class="icon-chip icon-chip-sm" aria-hidden="true"><span data-ws-icon="textSelect" data-ws-icon-size="14"></span></span>
 
       <span>Найти выделенное</span>
 
@@ -150,7 +140,7 @@
 
       <span class="option-label">
 
-        <span data-ws-icon="highlighter" data-ws-icon-size="14"></span>
+        <span class="icon-chip icon-chip-sm" id="annotation-mode-icon" aria-hidden="true"><span data-ws-icon="highlighter" data-ws-icon-size="14"></span></span>
 
         <span>Режим аннотаций</span>
 
@@ -168,11 +158,15 @@
 
   <div class="nav-row">
 
-    <button type="button" id="btn-prev" class="btn-nav" disabled aria-label="Предыдущее" data-ws-icon="chevronLeft" data-ws-icon-size="14"></button>
+    <button type="button" id="btn-prev" class="btn-nav icon-chip-btn" disabled aria-label="Предыдущее">
+      <span class="icon-chip icon-chip-sm" aria-hidden="true"><span data-ws-icon="chevronLeft" data-ws-icon-size="14"></span></span>
+    </button>
 
     <span id="counter" class="counter">0 из 0</span>
 
-    <button type="button" id="btn-next" class="btn-nav" disabled aria-label="Следующее" data-ws-icon="chevronRight" data-ws-icon-size="14"></button>
+    <button type="button" id="btn-next" class="btn-nav icon-chip-btn" disabled aria-label="Следующее">
+      <span class="icon-chip icon-chip-sm" aria-hidden="true"><span data-ws-icon="chevronRight" data-ws-icon-size="14"></span></span>
+    </button>
 
   </div>
 
@@ -183,13 +177,11 @@
 
 
   <script src="../lib/defaults.js"></script>
+  <script src="../lib/theme-accent.js"></script>
   <script src="../lib/settings-storage.js"></script>
   <script src="../lib/injection-manifest.js"></script>
+  <script src="../lib/icon-paths.js"></script>
   <script src="../lib/icons.js"></script>
-
-  <script src="../lib/qrcode.min.js"></script>
-
-  <script src="../lib/qr-utils.js"></script>
 
   <script src="popup.js"></script>
 

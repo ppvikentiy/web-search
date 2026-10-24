@@ -2,7 +2,7 @@
  * Reader tab: render extracted article, search, annotations.
  */
 (() => {
-  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '1.0.8';
+  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '2.0.0';
 
   let readerTabId = null;
   let payload = null;
@@ -23,6 +23,7 @@
   }
   let bgColorSaveTimer = null;
   let appearanceSaveTimer = null;
+  let readerSelectionHandler = null;
 
   const state = {
     query: '',
@@ -42,8 +43,6 @@
     error: document.getElementById('ws-reader-error'),
     errorText: document.getElementById('ws-reader-error-text'),
     backBtn: document.getElementById('ws-reader-back'),
-    historyBackBtn: document.getElementById('ws-reader-history-back'),
-    historyForwardBtn: document.getElementById('ws-reader-history-forward'),
     site: document.getElementById('ws-reader-site'),
     title: document.getElementById('ws-reader-title'),
     meta: document.getElementById('ws-reader-meta'),
@@ -92,6 +91,7 @@
     root.style.setProperty('--ws-reader-font-size', `${settings.readerFontSize ?? 18}px`);
     root.style.setProperty('--ws-reader-line-height', String(settings.readerLineHeight ?? 1.7));
     root.style.setProperty('--ws-reader-max-width', `${settings.readerMaxWidth ?? 680}px`);
+    globalThis.WSThemeAccent?.applyFromSettings?.(settings);
   }
 
   function parseSettings(stored) {
@@ -116,6 +116,10 @@
     state.settings = parseSettings(stored);
     applyReaderAppearance(state.settings);
     return state.settings;
+  }
+
+  function getReaderSearchRoot() {
+    return document.querySelector('.ws-reader-article') || els.content || null;
   }
 
   function getSearchOptions(overrides = {}) {
@@ -205,13 +209,6 @@
     WSDomUtils.clearExcludeCache();
     state.query = query.trim();
     state.options = getSearchOptions(options);
-    if (/\s/.test(state.query)) {
-      state.options = {
-        ...state.options,
-        wholeWord: false,
-        phraseMode: state.options.phraseMode || state.settings.phraseMode || 'exact'
-      };
-    }
 
     if (!state.query) {
       WSDomSearch.clearHighlights();
@@ -222,9 +219,23 @@
       return buildResponse();
     }
 
+    const searchRoot = getReaderSearchRoot();
+    if (!searchRoot) {
+      state.matches = [];
+      state.currentIndex = -1;
+      state.searchActive = false;
+      syncReaderPillUI();
+      return buildResponse();
+    }
+
     state.searching = true;
     try {
-      const result = await WSDomSearch.searchFull(state.query, state.options, state.settings);
+      const result = await WSDomSearch.searchFull(
+        state.query,
+        state.options,
+        state.settings,
+        searchRoot
+      );
       state.matches = result.matches.map((m) => wrapMatch(m));
       state.searchActive = true;
 
@@ -285,8 +296,8 @@
 
   function onSelectionMouseUp(e) {
     if (!state.annotationMode) return;
-    if (e.target?.closest?.('#ws-reader-pill')) return;
-    if (e.target?.closest?.('.ws-ann-menu, .ws-ann-popover, .ws-ann-note-editor, .ws-dict-popup')) return;
+    if (e.target?.closest?.('#ws-reader-pill, #ws-reader-outline')) return;
+    if (e.target?.closest?.('.ws-ann-menu, .ws-ann-popover, .ws-ann-note-editor')) return;
     if (e.target?.closest?.('mark.ws-annotation')) return;
 
     const sel = window.getSelection();
@@ -305,51 +316,34 @@
     } catch { /* extension unavailable */ }
   }
 
-  async function handleDictionaryLookup(text) {
-    if (state.annotationMode) {
-      return { ok: false, reason: 'annotation-mode' };
-    }
-
-    await loadSettings();
-    await WSUserDictionary.reload();
-    const entry = await WSUserDictionary.lookupWord(text, {
-      morphDepth: state.settings.morphDepth
-    });
-
-    const anchor = WSDictionaryPopup.getSelectionRect();
-    if (entry) {
-      WSDictionaryPopup.show(entry, anchor, state.settings);
-    } else {
-      const query = text.trim();
-      if (query && /^\S+$/.test(query)) {
-        WSDictionaryPopup.show(
-          { word: query, description: 'В вашем словаре нет этой записи.' },
-          anchor,
-          state.settings
-        );
-      }
-    }
-
-    return { ok: true, found: Boolean(entry) };
-  }
-
   async function enableAnnotationMode() {
+    if (state.annotationMode) return;
     state.annotationMode = true;
     await chrome.storage.session.set({ annotationModeEnabled: true }).catch(() => {});
     WSAnnotations.setAnnotationMode(true);
     await WSAnnotations.restoreFromStorage();
-    document.addEventListener('mouseup', onSelectionMouseUp, true);
+    if (!readerSelectionHandler) {
+      readerSelectionHandler = onSelectionMouseUp;
+      document.addEventListener('mouseup', readerSelectionHandler, true);
+    }
     syncReaderPillUI();
     notifyAnnotationModeChanged(true);
   }
 
-  function disableAnnotationMode(clearHighlights = true) {
+  function disableAnnotationMode({ clearAnnotations = false } = {}) {
     state.annotationMode = false;
     chrome.storage.session.set({ annotationModeEnabled: false }).catch(() => {});
     WSAnnotations.setAnnotationMode(false);
-    document.removeEventListener('mouseup', onSelectionMouseUp, true);
+    if (readerSelectionHandler) {
+      document.removeEventListener('mouseup', readerSelectionHandler, true);
+      readerSelectionHandler = null;
+    }
     WSAnnotationNote.closeAll();
-    if (clearHighlights) {
+    WSReaderPill.setAnnListOpen(false);
+    WSReaderPill.setPanelOpen(false);
+    WSReaderPill.setSavePanelOpen(false);
+    WSAnnotations.clearVisuals();
+    if (clearAnnotations) {
       WSAnnotations.clearAll();
       WSAnnotations.clearStorageForUrl();
     }
@@ -361,7 +355,7 @@
     if (enabled) {
       await enableAnnotationMode();
     } else {
-      disableAnnotationMode(true);
+      disableAnnotationMode({ clearAnnotations: false });
     }
     return buildAnnotationResponse();
   }
@@ -375,7 +369,14 @@
       getSettings: () => state.settings,
       setNote: (id, note) => WSAnnotations.setGroupNote(id, note),
       deleteNote: (id) => WSAnnotations.deleteGroupNote(id),
-      removeGroup: (id) => WSAnnotations.removeGroup(id)
+      removeGroup: (id) => WSAnnotations.removeGroup(id),
+      getSourceMeta: () => ({
+        url: payload?.sourceUrl || '',
+        title: payload?.title || '',
+        author: payload?.author || payload?.byline || '',
+        published: payload?.publishedTime || '',
+        site: payload?.siteName || ''
+      })
     });
   }
 
@@ -465,7 +466,7 @@
   function initReaderPill() {
     WSReaderPill.init({
       onSearch: async (query) => withOperationLock(() =>
-        runSearch(query, getSearchOptions(), 0, true)
+        runSearch(query, { ...getSearchOptions(), ...WSReaderPill.getSearchOptions() }, 0, true)
       ),
       onNavigate: async (direction) => withOperationLock(async () => navigate(direction)),
       onClear: async () => withOperationLock(async () => {
@@ -486,7 +487,7 @@
           WSDomSearch.invalidateMatcherCache();
           WSAnnotations.applyColors(state.settings);
           if (state.searchActive && state.query) {
-            return runSearch(state.query, getSearchOptions(), state.currentIndex, false);
+            return runSearch(state.query, { ...getSearchOptions(), ...WSReaderPill.getSearchOptions() }, state.currentIndex, false);
           }
           WSDomSearch.applyHighlightColors(state.settings);
           syncReaderPillUI();
@@ -519,6 +520,7 @@
         if (!articleEl || !payload) throw new Error('Статья не загружена');
         await WSReaderExport.copyMarkdown({ articleEl, payload, includeAnnotations: false });
       },
+      onHistory: (direction) => navigateHistory(direction),
       onSave: async ({ includeAnnotations }) => {
         const articleEl = document.querySelector('.ws-reader-article');
         if (!articleEl || !payload) {
@@ -634,19 +636,12 @@
             WSAnnotations.applyColors(state.settings);
             WSReaderPill.applySettings(state.settings);
             if (state.searchActive && state.query) {
-              return runSearch(state.query, getSearchOptions(), state.currentIndex, false);
+              return runSearch(state.query, { ...getSearchOptions(), ...WSReaderPill.getSearchOptions() }, state.currentIndex, false);
             }
             WSDomSearch.applyHighlightColors(state.settings);
             syncReaderPillUI();
             return buildResponse();
           });
-
-        case 'UPDATE_DICTIONARY':
-          await WSUserDictionary.reload();
-          return { ok: true };
-
-        case 'DICTIONARY_LOOKUP':
-          return handleDictionaryLookup(message.text || '');
 
         case 'READER_EXIT':
           await exitReader();
@@ -701,12 +696,10 @@
   }
 
   function updateHistoryControls() {
-    if (els.historyBackBtn) {
-      els.historyBackBtn.disabled = navState.index <= 0 || navState.loading;
-    }
-    if (els.historyForwardBtn) {
-      els.historyForwardBtn.disabled = navState.index >= navState.stack.length - 1 || navState.loading;
-    }
+    WSReaderPill.setHistoryNav({
+      backDisabled: navState.index <= 0 || navState.loading,
+      forwardDisabled: navState.index >= navState.stack.length - 1 || navState.loading
+    });
   }
 
   function resetSearchState() {
@@ -814,13 +807,144 @@
 
   function bindReaderNavigation() {
     els.content?.addEventListener('click', onContentLinkClick);
-    els.historyBackBtn?.addEventListener('click', () => navigateHistory(-1));
-    els.historyForwardBtn?.addEventListener('click', () => navigateHistory(1));
     els.navOpenBtn?.addEventListener('click', () => {
       if (pendingNavUrl) {
         chrome.tabs.create({ url: pendingNavUrl });
       }
     });
+  }
+
+  const outline = {
+    nav: null,
+    headings: [],
+    links: [],
+    open: false,
+    onScroll: null,
+    onKeydown: null,
+    onDocClick: null,
+    scrollFrame: 0
+  };
+
+  function setOutlineOpen(open) {
+    outline.open = open;
+    const card = outline.nav?.querySelector('.ws-reader-outline-card');
+    const toggle = outline.nav?.querySelector('.ws-reader-outline-toggle');
+    if (card) card.hidden = !open;
+    if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function clearOutline() {
+    if (outline.scrollFrame) cancelAnimationFrame(outline.scrollFrame);
+    if (outline.onScroll) window.removeEventListener('scroll', outline.onScroll);
+    if (outline.onKeydown) document.removeEventListener('keydown', outline.onKeydown);
+    if (outline.onDocClick) document.removeEventListener('click', outline.onDocClick);
+    outline.nav?.remove();
+    outline.nav = null;
+    outline.headings = [];
+    outline.links = [];
+    outline.open = false;
+    outline.onScroll = null;
+    outline.onKeydown = null;
+    outline.onDocClick = null;
+    outline.scrollFrame = 0;
+  }
+
+  function updateOutlineActive() {
+    if (!outline.headings.length) return;
+    const line = 88;
+    let current = outline.headings[0];
+    for (const heading of outline.headings) {
+      if (heading.getBoundingClientRect().top <= line) current = heading;
+    }
+    outline.links.forEach((link) => {
+      const on = link.dataset.headingId === current.id;
+      link.classList.toggle('is-current', on);
+      if (on) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+  }
+
+  function renderOutline() {
+    clearOutline();
+    const root = els.content;
+    if (!root) return;
+
+    const headings = [...root.querySelectorAll('h2, h3')].filter((heading) => (
+      (heading.textContent || '').replace(/\s+/g, ' ').trim()
+    ));
+    if (headings.length < 2) return;
+
+    headings.forEach((heading, index) => {
+      if (!heading.id) heading.id = `ws-outline-${index + 1}`;
+    });
+
+    const nav = document.createElement('nav');
+    nav.id = 'ws-reader-outline';
+    nav.className = 'ws-reader-outline';
+    nav.setAttribute('aria-label', 'Оглавление');
+    WSDomUtils.decorateExtensionUi?.(nav);
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'ws-reader-outline-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.innerHTML = `${WSIcons.svg('list', 15)}<span>Оглавление</span>`;
+
+    const card = document.createElement('div');
+    card.className = 'ws-reader-outline-card';
+    card.hidden = true;
+
+    const list = document.createElement('ul');
+    list.className = 'ws-reader-outline-list';
+
+    const links = headings.map((heading) => {
+      const item = document.createElement('li');
+      item.className = `ws-reader-outline-item is-${heading.tagName.toLowerCase()}`;
+      const link = document.createElement('a');
+      link.href = `#${heading.id}`;
+      link.className = 'ws-reader-outline-link';
+      link.dataset.headingId = heading.id;
+      link.textContent = heading.textContent.replace(/\s+/g, ' ').trim();
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        heading.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        if (window.innerWidth < 1100) setOutlineOpen(false);
+      });
+      item.append(link);
+      list.append(item);
+      return link;
+    });
+
+    card.append(list);
+    nav.append(toggle, card);
+    document.body.append(nav);
+
+    outline.nav = nav;
+    outline.headings = headings;
+    outline.links = links;
+
+    toggle.addEventListener('click', () => setOutlineOpen(!outline.open));
+
+    outline.onDocClick = (event) => {
+      if (!outline.open || nav.contains(event.target)) return;
+      setOutlineOpen(false);
+    };
+    outline.onKeydown = (event) => {
+      if (event.key === 'Escape' && outline.open) setOutlineOpen(false);
+    };
+    outline.onScroll = () => {
+      if (outline.scrollFrame) return;
+      outline.scrollFrame = requestAnimationFrame(() => {
+        outline.scrollFrame = 0;
+        updateOutlineActive();
+      });
+    };
+
+    document.addEventListener('click', outline.onDocClick);
+    document.addEventListener('keydown', outline.onKeydown);
+    window.addEventListener('scroll', outline.onScroll, { passive: true });
+    updateOutlineActive();
   }
 
   function renderArticle(data) {
@@ -837,6 +961,7 @@
       if (typeof DOMPurify === 'undefined' || typeof DOMPurify.sanitize !== 'function') {
         els.content.innerHTML = '';
         showError('Модуль очистки HTML недоступен. Переустановите расширение.');
+        clearOutline();
         return;
       }
       els.content.innerHTML = DOMPurify.sanitize(data.contentHtml || '');
@@ -847,14 +972,13 @@
 
     if (els.app) els.app.hidden = false;
     if (els.error) els.error.hidden = true;
+    renderOutline();
   }
 
   async function bootstrapSearchAndAnnotations() {
     await loadSettings();
     WSDomSearch.applyHighlightColors(state.settings);
     WSAnnotations.applyColors(state.settings);
-    WSDictionaryPopup.init();
-
     initAnnotations();
     initReaderPill();
 
@@ -863,6 +987,7 @@
       await enableAnnotationMode();
     } else {
       WSAnnotations.setAnnotationMode(false);
+      WSAnnotations.clearVisuals({ notify: false });
     }
 
     state.keydownHandler = onSearchKeydown;

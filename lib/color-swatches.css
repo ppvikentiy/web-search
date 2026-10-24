@@ -1,0 +1,82 @@
+.swatches {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.swatch-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.swatch-btn:hover {
+  transform: scale(1.06);
+}
+
+.swatch-btn.active {
+  box-shadow:
+    0 0 0 2px var(--nav-card-bg, #fff),
+    0 0 0 4px var(--ws-icon-chip-accent, #7c6cf0);
+}
+
+.swatch-btn-custom {
+  position: relative;
+  overflow: hidden;
+  background: conic-gradient(
+    #ef4444,
+    #f59e0b,
+    #22c55e,
+    #3b82f6,
+    #a855f7,
+    #ef4444
+  ) !important;
+  border-color: rgba(15, 23, 42, 0.15);
+}
+
+.swatch-btn-custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ws-color-input-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.color-row {
+  align-items: flex-start;
+}
+
+.color-row .swatches {
+  margin-top: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .swatch-btn {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .swatch-btn.active {
+    box-shadow:
+      0 0 0 2px var(--nav-card-bg, #2c2c2e),
+      0 0 0 4px var(--ws-icon-chip-accent, #9b8cff);
+  }
+}

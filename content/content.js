@@ -2,7 +2,7 @@
  * Content script entry: messaging, state, MutationObserver.
  */
 (() => {
-  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '1.0.8';
+  const CONTENT_SCRIPT_VERSION = globalThis.WS_CONTENT_SCRIPT_VERSION || '2.0.0';
 
   function isExtensionAlive() {
     try {
@@ -225,6 +225,7 @@
     try {
       const stored = await WSSettingsStorage.get(WS_DEFAULTS);
       state.settings = parseSettings(stored);
+      globalThis.WSThemeAccent?.applyFromSettings?.(state.settings);
       return state.settings;
     } catch (err) {
       handleExtensionError(err);
@@ -293,34 +294,6 @@
     } catch { /* extension unavailable */ }
   }
 
-  async function handleDictionaryLookup(text) {
-    if (state.annotationMode) {
-      return { ok: false, reason: 'annotation-mode' };
-    }
-
-    await loadSettings();
-    await WSUserDictionary.reload();
-    const entry = await WSUserDictionary.lookupWord(text, {
-      morphDepth: state.settings.morphDepth
-    });
-
-    const anchor = WSDictionaryPopup.getSelectionRect();
-    if (entry) {
-      WSDictionaryPopup.show(entry, anchor, state.settings);
-    } else {
-      const query = text.trim();
-      if (query && /^\S+$/.test(query)) {
-        WSDictionaryPopup.show(
-          { word: query, description: 'В вашем словаре нет этой записи.' },
-          anchor,
-          state.settings
-        );
-      }
-    }
-
-    return { ok: true, found: Boolean(entry) };
-  }
-
   function getSearchOptions(overrides = {}) {
     const settings = state.settings || {};
     const has = (key) => Object.prototype.hasOwnProperty.call(overrides, key)
@@ -373,6 +346,11 @@
 
   function updatePillUI() {
     if (!WSAnnotations.isTopFrame()) return;
+    if (!state.annotationMode) {
+      WSAnnotationPill.hide();
+      return;
+    }
+    WSAnnotationPill.show();
     const annState = WSAnnotations.getState();
     WSAnnotationPill.updateCounter(annState.displayCurrent, annState.total);
     WSAnnotationPill.renderList(
@@ -428,14 +406,18 @@
     }
   }
 
-  function enableAnnotationMode() {
+  async function enableAnnotationMode() {
+    if (state.annotationMode) {
+      if (WSAnnotations.isTopFrame()) updatePillUI();
+      return;
+    }
     state.annotationMode = true;
     saveSessionMode(true);
     WSAnnotations.setAnnotationMode(true);
     startAnnotationObserver();
+    await WSAnnotations.restoreFromStorage();
 
     if (WSAnnotations.isTopFrame()) {
-      WSAnnotationPill.show();
       updatePillUI();
       broadcastAnnotationMode(true);
       notifyAnnotationModeChanged(true);
@@ -458,18 +440,19 @@
       state.selectionHandler = null;
     }
 
+    WSAnnotationNote.closeAll();
+
     if (clearHighlights) {
-      WSAnnotations.clearAll();
-      if (WSAnnotations.isTopFrame()) {
-        WSAnnotations.clearStorageForUrl();
-      }
+      WSAnnotations.clearVisuals();
     }
 
     if (WSAnnotations.isTopFrame()) {
       WSAnnotationPill.hide();
+      WSAnnotationPill.setPanelOpen(false);
       if (resetPillPosition) {
         WSAnnotationPill.resetPosition();
       }
+      updatePillUI();
       broadcastAnnotationMode(false);
       notifyAnnotationModeChanged(false);
     }
@@ -569,9 +552,9 @@
     if (msg?.type === 'ws-annotation-event' && msg.action === 'mode') {
       if (WSAnnotations.isTopFrame()) return;
       if (msg.enabled) {
-        enableAnnotationMode();
+        enableAnnotationMode().catch(handleExtensionError);
       } else {
-        disableAnnotationMode(false);
+        disableAnnotationMode(false, { clearHighlights: true });
       }
       return;
     }
@@ -620,9 +603,9 @@
     }
   }
 
-  function setAnnotationMode(enabled) {
+  async function setAnnotationMode(enabled) {
     if (enabled) {
-      enableAnnotationMode();
+      await enableAnnotationMode();
     } else {
       disableAnnotationMode(true, { clearHighlights: true });
     }
@@ -631,13 +614,13 @@
 
   async function annotateSelection(autoEnable = false, fallbackText = '') {
     if (autoEnable && !state.annotationMode) {
-      enableAnnotationMode();
+      await enableAnnotationMode();
     }
 
     const created = WSAnnotations.createFromSelection(fallbackText);
 
     if (created && !state.annotationMode) {
-      enableAnnotationMode();
+      await enableAnnotationMode();
     }
 
     if (created) {
@@ -655,13 +638,6 @@
     WSDomUtils.clearExcludeCache();
     state.query = query.trim();
     state.options = getSearchOptions(options);
-    if (/\s/.test(state.query)) {
-      state.options = {
-        ...state.options,
-        wholeWord: false,
-        phraseMode: state.options.phraseMode || state.settings.phraseMode || 'exact'
-      };
-    }
 
     if (!state.query) {
       WSDomSearch.clearHighlights();
@@ -963,7 +939,7 @@
       onAnnotationToggle: async (enabled) => withOperationLock(async () => {
         await loadSettings();
         WSAnnotations.applyColors(state.settings);
-        setAnnotationMode(enabled);
+        await setAnnotationMode(enabled);
         return buildResponse();
       }),
       onReaderOpen: async () => withOperationLock(async () => {
@@ -1057,8 +1033,6 @@
         'PING',
         'ANNOTATE_SELECTION',
         'UPDATE_SETTINGS',
-        'UPDATE_DICTIONARY',
-        'DICTIONARY_LOOKUP',
         'SEARCH',
         'NEXT',
         'PREV',
@@ -1130,7 +1104,7 @@
             await loadSettings();
             WSAnnotations.applyColors(state.settings);
             const enabled = message.enabled ?? !state.annotationMode;
-            setAnnotationMode(enabled);
+            await setAnnotationMode(enabled);
             return buildResponse();
           });
 
@@ -1176,27 +1150,6 @@
             return buildResponse();
           });
 
-        case 'UPDATE_DICTIONARY':
-          await WSUserDictionary.reload();
-          return { ok: true };
-
-        case 'DICTIONARY_LOOKUP':
-          return handleDictionaryLookup(message.text || '');
-
-        case 'QR_DECODE_IMAGE':
-          if (!globalThis.WSQrDecode) {
-            return { ok: false, error: 'not_found' };
-          }
-          {
-            const data = await globalThis.WSQrDecode.decodeFromSrcUrl(message.srcUrl || '');
-            if (data) {
-              globalThis.WSQrDecode.showResult(data);
-              return { ok: true, data };
-            }
-            globalThis.WSQrDecode.showNotFound();
-            return { ok: false, error: 'not_found' };
-          }
-
         case 'READER_EXTRACT':
           if (!WSAnnotations.isTopFrame()) {
             return { ok: false, error: 'not_top_frame' };
@@ -1226,18 +1179,6 @@
             return { ok: true };
           });
 
-        case 'ARCHIVE_PREPARE':
-          if (!WSAnnotations.isTopFrame()) {
-            return { ok: false, error: 'not_top_frame' };
-          }
-          return WSArchiveCollect.preparePageForArchive(message);
-
-        case 'ARCHIVE_COLLECT':
-          if (!WSAnnotations.isTopFrame()) {
-            return { ok: false, error: 'not_top_frame' };
-          }
-          return WSArchiveCollect.collectPageSnapshot();
-
         default:
           return { error: 'Unknown message type' };
       }
@@ -1255,8 +1196,6 @@
   async function bootstrap() {
     initAnnotations();
     initSearchSidebar();
-    WSDictionaryPopup.init();
-    WSQrDecode.init();
     startKeyboardShortcuts();
     window.addEventListener('message', onFrameModeMessage);
     ensureFrameNonce().catch(() => {});
@@ -1270,9 +1209,15 @@
 
       const modeFromSession = await loadSessionMode();
       if (modeFromSession && !state.tornDown) {
-        await WSAnnotations.restoreFromStorage();
-        enableAnnotationMode();
+        await enableAnnotationMode();
         updatePillUI();
+      } else if (!state.tornDown) {
+        WSAnnotations.setAnnotationMode(false);
+        WSAnnotations.clearVisuals({ notify: false });
+        if (WSAnnotations.isTopFrame()) {
+          WSAnnotationPill.hide();
+          WSAnnotationPill.setPanelOpen(false);
+        }
       }
     } catch (err) {
       handleExtensionError(err);

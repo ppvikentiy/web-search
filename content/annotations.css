@@ -168,32 +168,44 @@ mark.ws-annotation.ws-annotation-active {
 }
 
 #ws-annotation-pill {
+  --ws-ann-pill-accent: var(--ws-user-accent, var(--ws-accent, #7c6cf0));
+  --ws-ann-pill-chrome-bg: var(--ws-ann-popup-bg, #ffffff);
+  --ws-ann-pill-chrome-text: var(--ws-ann-popup-text, #334155);
+  --ws-ann-pill-chrome-muted: var(--ws-ann-popup-muted, #94a3b8);
+  --ws-ann-pill-chrome-border: var(--ws-ann-popup-border, rgba(15, 23, 42, 0.1));
+  --ws-ann-pill-chrome-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 14px rgba(15, 23, 42, 0.08);
+
   position: fixed;
   z-index: 2147483646;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 0;
-  min-width: 200px;
+  min-width: 0;
   padding: 0;
-  background: #1a1a2e;
-  color: #f0f0f5;
-  border-radius: var(--ws-radius-lg, 18px);
-  corner-shape: squircle;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 13px;
+  background: transparent;
+  color: var(--ws-ann-pill-chrome-text);
+  border: none;
+  box-shadow: none;
+  font-family: var(--ws-font, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 12px;
   line-height: 1;
   user-select: none;
   pointer-events: auto;
-  overflow: hidden;
 }
 
 #ws-annotation-pill .ws-pill-bar {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
+  gap: 2px;
+  padding: 4px 8px 4px 4px;
+  min-height: 34px;
+  background: var(--ws-ann-pill-chrome-bg);
+  border: 1px solid var(--ws-ann-pill-chrome-border);
+  border-radius: 999px;
+  box-shadow: var(--ws-ann-pill-chrome-shadow);
 }
 
 #ws-annotation-pill[hidden] {
@@ -204,15 +216,21 @@ mark.ws-annotation.ws-annotation-active {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: none;
-  border-radius: 50%;
+  border-radius: 999px;
   background: transparent;
-  color: #a0a0b8;
+  color: var(--ws-ann-pill-chrome-muted);
   cursor: grab;
   line-height: 1;
+  flex-shrink: 0;
+}
+
+#ws-annotation-pill .ws-pill-drag:hover {
+  color: var(--ws-ann-pill-chrome-text);
+  background: var(--ws-ann-pill-btn-hover, var(--ws-ann-popup-btn-hover, rgba(15, 23, 42, 0.06)));
 }
 
 #ws-annotation-pill .ws-pill-drag:active {
@@ -223,19 +241,25 @@ mark.ws-annotation.ws-annotation-active {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: #f0f0f5;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ws-ann-pill-chrome-text);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
 }
 
 #ws-annotation-pill .ws-pill-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--ws-ann-pill-btn-hover, var(--ws-ann-popup-btn-hover, rgba(15, 23, 42, 0.06)));
+  color: var(--ws-ann-pill-accent);
+}
+
+#ws-annotation-pill .ws-pill-btn .ws-icon {
+  stroke-width: 1.75;
 }
 
 #ws-annotation-pill .ws-pill-btn:disabled {
@@ -244,7 +268,8 @@ mark.ws-annotation.ws-annotation-active {
 }
 
 #ws-annotation-pill .ws-pill-close:hover:not(:disabled) {
-  background: rgba(255, 80, 80, 0.35);
+  background: var(--ws-ann-popup-btn-danger-hover, rgba(255, 59, 48, 0.12));
+  color: var(--ws-ann-popup-btn-danger-text, #ff3b30);
 }
 
 #ws-annotation-pill .ws-pill-status {
@@ -262,11 +287,19 @@ mark.ws-annotation.ws-annotation-active {
 }
 
 #ws-annotation-pill .ws-pill-counter {
-  min-width: 56px;
+  min-width: 52px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 500;
   white-space: nowrap;
-  padding: 0 4px;
+  padding: 0 6px;
+  color: var(--ws-ann-pill-chrome-muted);
+}
+
+#ws-annotation-pill .ws-pill-counter strong {
+  color: var(--ws-ann-pill-chrome-text);
+  font-weight: 600;
 }
 
 #ws-annotation-pill .ws-pill-toggle svg {
@@ -278,13 +311,63 @@ mark.ws-annotation.ws-annotation-active {
 }
 
 #ws-annotation-pill .ws-pill-panel {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  grid-template-rows: 0fr;
+  width: min(320px, calc(100vw - 24px));
+  margin-top: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top center;
+  background: var(--ws-ann-pill-chrome-bg);
+  border: 1px solid transparent;
+  border-radius: var(--ws-radius-panel, 14px);
+  box-shadow: none;
+  pointer-events: none;
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.33, 1, 0.68, 1),
+    opacity 0.26s ease,
+    transform 0.3s cubic-bezier(0.33, 1, 0.68, 1),
+    margin-top 0.28s ease,
+    border-color 0.2s ease,
+    box-shadow 0.28s ease;
+}
+
+#ws-annotation-pill .ws-pill-panel.ws-pill-panel-open {
+  grid-template-rows: 1fr;
+  margin-top: 6px;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  border-color: var(--ws-ann-pill-chrome-border);
+  box-shadow: var(--ws-ann-popup-shadow, var(--ws-ann-pill-chrome-shadow));
+  pointer-events: auto;
+}
+
+#ws-annotation-pill .ws-pill-panel-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+#ws-annotation-pill .ws-pill-panel-open .ws-pill-panel-inner {
   max-height: 240px;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 #ws-annotation-pill .ws-pill-panel[hidden] {
   display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ws-annotation-pill .ws-pill-panel {
+    transition: none;
+    transform: none;
+  }
+
+  #ws-annotation-pill .ws-pill-panel.ws-pill-panel-open {
+    transform: none;
+  }
 }
 
 #ws-annotation-pill .ws-pill-list {
@@ -295,7 +378,7 @@ mark.ws-annotation.ws-annotation-active {
 
 #ws-annotation-pill .ws-pill-list-empty {
   padding: 10px 12px;
-  color: #a0a0b8;
+  color: var(--ws-ann-pill-chrome-muted);
   font-size: 12px;
   text-align: center;
 }
@@ -308,9 +391,8 @@ mark.ws-annotation.ws-annotation-active {
   padding: 8px 10px;
   border: none;
   border-radius: var(--ws-radius-sm, 10px);
-  corner-shape: squircle;
   background: transparent;
-  color: #f0f0f5;
+  color: var(--ws-ann-pill-chrome-text);
   font-family: inherit;
   font-size: 12px;
   line-height: 1.35;
@@ -320,11 +402,12 @@ mark.ws-annotation.ws-annotation-active {
 }
 
 #ws-annotation-pill .ws-pill-list-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--ws-ann-popup-btn-hover, rgba(15, 23, 42, 0.06));
 }
 
 #ws-annotation-pill .ws-pill-list-item-active {
-  background: rgba(30, 144, 255, 0.25);
+  background: color-mix(in srgb, var(--ws-ann-pill-accent) 14%, transparent);
+  color: var(--ws-ann-pill-accent);
 }
 
 #ws-annotation-pill .ws-pill-list-text {
@@ -342,7 +425,26 @@ mark.ws-annotation.ws-annotation-active {
   align-items: center;
 }
 
-.ws-ann-menu,
+.ws-ann-menu {
+  position: fixed;
+  z-index: 2147483647;
+  min-width: 280px;
+  max-width: min(400px, calc(100vw - 24px));
+  padding: 8px;
+  background: #ffffff;
+  color: #1d1d1f;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 28px rgba(15, 23, 42, 0.12);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
 .ws-ann-popover {
   position: fixed;
   z-index: 2147483647;
@@ -352,7 +454,6 @@ mark.ws-annotation.ws-annotation-active {
   background: var(--ws-ann-popup-bg);
   color: var(--ws-ann-popup-text);
   border-radius: var(--ws-radius-lg, 18px);
-  corner-shape: squircle;
   box-shadow: var(--ws-ann-popup-shadow);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
@@ -368,32 +469,41 @@ mark.ws-annotation.ws-annotation-active {
 .ws-ann-menu-actions {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .ws-ann-menu-btn {
   display: block;
   width: 100%;
-  padding: 10px 14px;
+  padding: 11px 14px;
   border: none;
-  border-radius: var(--ws-radius-sm, 10px);
-  corner-shape: squircle;
+  border-radius: var(--ws-radius-panel, 14px);
   background: transparent;
-  color: var(--ws-ann-popup-text);
+  color: #334155;
   font-family: inherit;
   font-size: 14px;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
 .ws-ann-menu-btn:hover {
-  background: var(--ws-ann-popup-btn-hover);
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.ws-ann-menu-btn-danger {
+  color: #64748b;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 0 0 10px 10px;
 }
 
 .ws-ann-menu-btn-danger:hover {
-  background: var(--ws-ann-popup-btn-danger-hover);
-  color: var(--ws-ann-popup-btn-danger-text);
+  background: #fef2f2;
+  color: #b91c1c;
 }
 
 .ws-ann-note-editor {
@@ -409,7 +519,6 @@ mark.ws-annotation.ws-annotation-active {
   padding: 10px 12px;
   border: 1px solid var(--ws-ann-popup-input-border);
   border-radius: var(--ws-radius-sm, 10px);
-  corner-shape: squircle;
   background: var(--ws-ann-popup-input-bg);
   color: var(--ws-ann-popup-text);
   font-family: inherit;
@@ -434,7 +543,6 @@ mark.ws-annotation.ws-annotation-active {
   padding: 8px 14px;
   border: none;
   border-radius: var(--ws-radius-sm, 10px);
-  corner-shape: squircle;
   background: var(--ws-ann-popup-btn-hover);
   color: var(--ws-ann-popup-text);
   font-family: inherit;
@@ -480,7 +588,6 @@ mark.ws-annotation.ws-annotation-active {
   padding: 10px 14px;
   border: none;
   border-radius: var(--ws-radius-sm, 10px);
-  corner-shape: squircle;
   background: transparent;
   color: var(--ws-ann-popup-text);
   font-family: inherit;

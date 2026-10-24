@@ -30,7 +30,7 @@ globalThis.WSReaderPill = (() => {
 
 
 
-  function createIconBtn(className, title, iconName, iconSize = 14) {
+  function createIconBtn(className, title, iconName, iconSize = 15) {
 
     const btn = document.createElement('button');
 
@@ -122,15 +122,67 @@ globalThis.WSReaderPill = (() => {
 
     root.id = PILL_ID;
 
-    root.setAttribute('role', 'toolbar');
+    root.className = 'ws-reader-pill-cluster';
 
-    root.setAttribute('aria-label', 'Поиск и аннотации');
+    root.setAttribute('role', 'group');
+
+    root.setAttribute('aria-label', 'Поиск и инструменты читателя');
 
 
 
-    const bar = document.createElement('div');
+    const searchPill = document.createElement('div');
 
-    bar.className = 'ws-rp-bar';
+    searchPill.className = 'ws-rp-pill ws-rp-pill-search';
+
+    searchPill.setAttribute('role', 'search');
+
+    searchPill.setAttribute('aria-label', 'Поиск по статье');
+
+
+
+    const searchBar = document.createElement('div');
+
+    searchBar.className = 'ws-rp-bar';
+
+
+
+    const toolsPill = document.createElement('div');
+
+    toolsPill.className = 'ws-rp-pill ws-rp-pill-tools';
+
+    toolsPill.setAttribute('role', 'toolbar');
+
+    toolsPill.setAttribute('aria-label', 'Навигация, аннотации и настройки');
+
+
+
+    const toolsBar = document.createElement('div');
+
+    toolsBar.className = 'ws-rp-bar';
+
+
+
+    els.historyGroup = document.createElement('div');
+
+    els.historyGroup.className = 'ws-rp-history-group';
+
+    els.btnHistoryBack = createIconBtn('ws-rp-btn ws-rp-history', 'Предыдущая статья', 'undo2', 17);
+
+    els.btnHistoryBack.disabled = true;
+
+    els.btnHistoryForward = createIconBtn('ws-rp-btn ws-rp-history', 'Следующая статья', 'redo2', 17);
+
+    els.btnHistoryForward.disabled = true;
+
+    els.historyGroup.append(els.btnHistoryBack, els.btnHistoryForward);
+
+
+
+    els.sepHistory = document.createElement('span');
+
+    els.sepHistory.className = 'ws-rp-sep';
+
+    els.sepHistory.setAttribute('aria-hidden', 'true');
 
 
 
@@ -138,7 +190,7 @@ globalThis.WSReaderPill = (() => {
 
     searchWrap.className = 'ws-rp-search-wrap';
 
-    searchWrap.innerHTML = `<span class="ws-rp-search-icon">${I('search', 14)}</span>`;
+    searchWrap.innerHTML = `<span class="ws-rp-search-icon">${I('search', 15)}</span>`;
 
 
 
@@ -148,7 +200,8 @@ globalThis.WSReaderPill = (() => {
 
     els.query.className = 'ws-rp-query';
 
-    els.query.placeholder = 'Поиск…';
+    els.query.placeholder = 'Фраза, a | b, -слово';
+    els.query.title = 'Слова подряд — фраза. | или, & оба в блоке, кавычки — точно, -слово пропускает блок, * маска.';
 
     els.query.autocomplete = 'off';
 
@@ -156,7 +209,7 @@ globalThis.WSReaderPill = (() => {
 
 
 
-    els.btnClear = createIconBtn('ws-rp-btn ws-rp-clear', 'Очистить', 'x', 12);
+    els.btnClear = createIconBtn('ws-rp-btn ws-rp-clear', 'Очистить', 'x', 15);
 
     els.btnClear.hidden = true;
 
@@ -166,7 +219,7 @@ globalThis.WSReaderPill = (() => {
 
 
 
-    els.btnSearch = createIconBtn('ws-rp-btn ws-rp-search-btn', 'Найти', 'search', 14);
+    els.btnSearch = createIconBtn('ws-rp-btn ws-rp-search-btn', 'Найти', 'search', 17);
 
 
 
@@ -178,7 +231,7 @@ globalThis.WSReaderPill = (() => {
 
 
 
-    els.btnSearchPrev = createIconBtn('ws-rp-btn ws-rp-nav', 'Предыдущее совпадение', 'chevronLeft', 14);
+    els.btnSearchPrev = createIconBtn('ws-rp-btn ws-rp-nav', 'Предыдущее совпадение', 'chevronLeft', 17);
 
     els.searchCounter = document.createElement('span');
 
@@ -186,7 +239,7 @@ globalThis.WSReaderPill = (() => {
 
     els.searchCounter.textContent = '0/0';
 
-    els.btnSearchNext = createIconBtn('ws-rp-btn ws-rp-nav', 'Следующее совпадение', 'chevronRight', 14);
+    els.btnSearchNext = createIconBtn('ws-rp-btn ws-rp-nav', 'Следующее совпадение', 'chevronRight', 17);
 
 
 
@@ -194,15 +247,7 @@ globalThis.WSReaderPill = (() => {
 
 
 
-    els.sepSearchAnn = document.createElement('span');
-
-    els.sepSearchAnn.className = 'ws-rp-sep ws-rp-sep-search-ann';
-
-    els.sepSearchAnn.setAttribute('aria-hidden', 'true');
-
-
-
-    els.btnAnnMode = createIconBtn('ws-rp-btn ws-rp-ann-toggle', 'Режим аннотаций', 'highlighter', 14);
+    els.btnAnnMode = createIconBtn('ws-rp-btn ws-rp-ann-toggle', 'Режим аннотаций', 'highlighter', 17);
 
 
 
@@ -214,7 +259,7 @@ globalThis.WSReaderPill = (() => {
 
 
 
-    els.btnAnnPrev = createIconBtn('ws-rp-btn ws-rp-nav', 'Предыдущая аннотация', 'chevronLeft', 14);
+    els.btnAnnPrev = createIconBtn('ws-rp-btn ws-rp-nav', 'Предыдущая аннотация', 'chevronLeft', 17);
 
     els.annCounter = document.createElement('span');
 
@@ -222,9 +267,9 @@ globalThis.WSReaderPill = (() => {
 
     els.annCounter.textContent = '0/0';
 
-    els.btnAnnNext = createIconBtn('ws-rp-btn ws-rp-nav', 'Следующая аннотация', 'chevronRight', 14);
+    els.btnAnnNext = createIconBtn('ws-rp-btn ws-rp-nav', 'Следующая аннотация', 'chevronRight', 17);
 
-    els.btnAnnList = createIconBtn('ws-rp-btn ws-rp-ann-list', 'Список аннотаций', 'list', 14);
+    els.btnAnnList = createIconBtn('ws-rp-btn ws-rp-ann-list', 'Список аннотаций', 'alignLeft', 17);
 
     els.btnAnnList.setAttribute('aria-expanded', 'false');
 
@@ -242,7 +287,7 @@ globalThis.WSReaderPill = (() => {
 
 
 
-    els.btnSettings = createIconBtn('ws-rp-btn ws-rp-settings', 'Настройки читателя', 'settings', 14);
+    els.btnSettings = createIconBtn('ws-rp-btn ws-rp-settings', 'Настройки читателя', 'settings', 17);
 
     els.btnSettings.setAttribute('aria-expanded', 'false');
 
@@ -252,22 +297,22 @@ globalThis.WSReaderPill = (() => {
       'ws-rp-btn ws-rp-save',
       'Сохранить статью (.md)',
       'download',
-      14
+      17
     );
 
     els.btnSave.setAttribute('aria-expanded', 'false');
 
 
 
-    bar.append(
+    searchBar.append(searchWrap, els.btnSearch, els.searchNavGroup);
 
-      searchWrap,
 
-      els.btnSearch,
 
-      els.searchNavGroup,
+    toolsBar.append(
 
-      els.sepSearchAnn,
+      els.historyGroup,
+
+      els.sepHistory,
 
       els.btnAnnMode,
 
@@ -330,6 +375,12 @@ globalThis.WSReaderPill = (() => {
     els.bgColor = bgRow.querySelector('.ws-rp-bg-color');
 
     els.bgReset = bgRow.querySelector('.ws-rp-bg-reset');
+
+    if (globalThis.WSSwatches && els.bgColor) {
+      els.bgSwatchUi = WSSwatches.mount(els.bgColor, {
+        presets: WSSwatches.PALETTES.readerBg
+      });
+    }
 
 
 
@@ -443,7 +494,11 @@ globalThis.WSReaderPill = (() => {
 
 
 
-    root.append(bar, panelEl, els.savePanel, els.annListPanel);
+    searchPill.appendChild(searchBar);
+
+    toolsPill.append(toolsBar, panelEl, els.savePanel, els.annListPanel);
+
+    root.append(searchPill, toolsPill);
 
     mount.appendChild(root);
 
@@ -457,11 +512,19 @@ globalThis.WSReaderPill = (() => {
 
   function bindEvents() {
 
-    els.btnSearch?.addEventListener('click', () => callbacks.onSearch?.(els.query?.value?.trim() || ''));
+    const runSearchFromPill = () => {
+      const query = els.query?.value?.trim() || '';
+      const run = callbacks.onSearch?.(query);
+      if (run && typeof run.catch === 'function') {
+        run.catch((err) => console.warn('[ws-reader] search failed:', err));
+      }
+    };
+
+    els.btnSearch?.addEventListener('click', runSearchFromPill);
 
     els.query?.addEventListener('keydown', (e) => {
 
-      if (e.key === 'Enter') callbacks.onSearch?.(els.query?.value?.trim() || '');
+      if (e.key === 'Enter') runSearchFromPill();
 
     });
 
@@ -527,7 +590,9 @@ globalThis.WSReaderPill = (() => {
 
     els.btnSettings?.addEventListener('click', () => setPanelOpen(!settingsOpen));
 
+    els.btnHistoryBack?.addEventListener('click', () => callbacks.onHistory?.(-1));
 
+    els.btnHistoryForward?.addEventListener('click', () => callbacks.onHistory?.(1));
 
     els.btnSave?.addEventListener('click', () => setSavePanelOpen(!saveOpen));
 
@@ -787,6 +852,8 @@ globalThis.WSReaderPill = (() => {
 
     }
 
+    els.bgSwatchUi?.refresh?.();
+
     if (els.fontSize) els.fontSize.value = String(settings.readerFontSize ?? 18);
 
     if (els.lineHeight) els.lineHeight.value = String(settings.readerLineHeight ?? 1.7);
@@ -879,14 +946,6 @@ globalThis.WSReaderPill = (() => {
 
     if (els.btnAnnList) els.btnAnnList.disabled = annTotal === 0;
 
-
-
-    if (els.sepSearchAnn) {
-
-      els.sepSearchAnn.hidden = false;
-
-    }
-
     if (els.sepAnnSettings) {
 
       els.sepAnnSettings.hidden = !showAnnNav;
@@ -951,6 +1010,27 @@ globalThis.WSReaderPill = (() => {
 
 
 
+  function getSearchOptions() {
+    return {
+      caseSensitive: els.optCase?.checked ?? true,
+      wholeWord: els.optWhole?.checked ?? true,
+      useMorphology: els.optMorph?.checked ?? false,
+      matchMode: els.optWhole?.checked ? 'whole' : 'substring'
+    };
+  }
+
+
+
+  function setHistoryNav({ backDisabled = true, forwardDisabled = true } = {}) {
+
+    if (els.btnHistoryBack) els.btnHistoryBack.disabled = backDisabled;
+
+    if (els.btnHistoryForward) els.btnHistoryForward.disabled = forwardDisabled;
+
+  }
+
+
+
   function init(cb = {}) {
 
     callbacks = cb;
@@ -1001,7 +1081,11 @@ globalThis.WSReaderPill = (() => {
 
     setAnnListOpen,
 
-    setSavePanelOpen
+    setSavePanelOpen,
+
+    setHistoryNav,
+
+    getSearchOptions
 
   };
 

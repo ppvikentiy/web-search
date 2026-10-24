@@ -5,12 +5,18 @@ const CLIPPER_SAMPLE = {
   note: 'Моя заметка к цитате',
   url: 'https://example.com/article',
   title: 'Название статьи',
-  date: '08.07.2026, 16:30'
+  date: '08.07.2026, 16:30',
+  author: 'Иван Иванов',
+  site: 'Example',
+  published: '15.03.2024'
 };
 
 const LITERATURE_SAMPLE = {
   url: 'https://example.com/article',
   title: 'Название статьи',
+  author: 'Иван Иванов',
+  site: 'Example',
+  published: '2024-03-15',
   date: new Date(2026, 6, 8, 16, 30)
 };
 
@@ -18,6 +24,7 @@ const els = {
   setCase: $('set-case'),
   setWhole: $('set-whole'),
   setMorph: $('set-morph'),
+  setAccentColor: $('set-accent-color'),
   setHighlightColor: $('set-highlight-color'),
   setCurrentColor: $('set-current-color'),
   setAnnotationColor: $('set-annotation-color'),
@@ -26,6 +33,10 @@ const els = {
   setAnnotationPopupText: $('set-annotation-popup-text'),
   setAnnotationPopupMuted: $('set-annotation-popup-muted'),
   annPopupCustomColors: $('ann-popup-custom-colors'),
+  setAnnotationPillBg: $('set-annotation-pill-bg'),
+  setAnnotationPillText: $('set-annotation-pill-text'),
+  setAnnotationPillMuted: $('set-annotation-pill-muted'),
+  annPillCustomColors: $('ann-pill-custom-colors'),
   setAnnotationIframes: $('set-annotation-iframes'),
   setAnnotationExcludeTags: $('set-annotation-exclude-tags'),
   setAnnotationExcludeSelectors: $('set-annotation-exclude-selectors'),
@@ -33,6 +44,9 @@ const els = {
   clipperFieldUrl: $('clipper-field-url'),
   clipperFieldTitle: $('clipper-field-title'),
   clipperFieldDate: $('clipper-field-date'),
+  clipperFieldAuthor: $('clipper-field-author'),
+  clipperFieldSite: $('clipper-field-site'),
+  clipperFieldPublished: $('clipper-field-published'),
   clipperPreview: $('clipper-preview'),
   clipperCustom: $('clipper-custom'),
   clipperAdvanced: $('clipper-advanced'),
@@ -49,9 +63,6 @@ const els = {
   settingsImportFile: $('settings-import-file'),
   annotationStorageStats: $('annotation-storage-stats'),
   annotationStorageClear: $('annotation-storage-clear'),
-  setArchiveScrollDelay: $('set-archive-scroll-delay'),
-  setArchivePrepareTimeout: $('set-archive-prepare-timeout'),
-  setArchiveOmitCredentials: $('set-archive-omit-credentials'),
   saveStatus: $('save-status'),
   dictAddWord: $('dict-add-word'),
   dictAddForms: $('dict-add-forms'),
@@ -69,35 +80,42 @@ const els = {
   dictExportBtn: $('dict-export-btn'),
   dictImportBtn: $('dict-import-btn'),
   dictImportFile: $('dict-import-file'),
-  dictImportStatus: $('dict-import-status'),
-  archiveSaveCurrent: $('archive-save-current'),
-  archiveStats: $('archive-stats'),
-  archiveList: $('archive-list'),
-  archiveEmpty: $('archive-empty'),
-  archiveClearJournal: $('archive-clear-journal'),
-  archiveOpenBtn: $('archive-open-btn'),
-  archiveSaveModal: $('archive-save-modal'),
-  archiveSaveUrl: $('archive-save-url'),
-  archiveSaveError: $('archive-save-error'),
-  archiveSaveCancel: $('archive-save-cancel'),
-  archiveSaveSubmit: $('archive-save-submit'),
-  archiveSaveProgressWrap: $('archive-save-progress-wrap'),
-  archiveSaveProgressLabel: $('archive-save-progress-label'),
-  archiveSaveProgressBar: $('archive-save-progress-bar'),
-  archiveOpenModal: $('archive-open-modal'),
-  archiveDropzone: $('archive-dropzone'),
-  archiveOpenPick: $('archive-open-pick'),
-  archiveOpenFile: $('archive-open-file'),
-  archiveOpenFilename: $('archive-open-filename'),
-  archiveOpenError: $('archive-open-error'),
-  archiveOpenCancel: $('archive-open-cancel'),
-  archiveOpenSubmit: $('archive-open-submit'),
-  archiveOpenProgressWrap: $('archive-open-progress-wrap'),
-  archiveOpenProgressLabel: $('archive-open-progress-label'),
-  archiveOpenProgressBar: $('archive-open-progress-bar')
+  dictImportStatus: $('dict-import-status')
 };
 
 let saveTimer = null;
+const colorSwatchUi = [];
+
+function initColorSwatches() {
+  if (!globalThis.WSSwatches) return;
+  const { mount, PALETTES } = WSSwatches;
+  const bindings = [
+    { el: els.setAccentColor, presets: PALETTES.accent },
+    { el: els.setHighlightColor, presets: PALETTES.highlight },
+    { el: els.setCurrentColor, presets: PALETTES.currentHighlight },
+    { el: els.setAnnotationColor, presets: PALETTES.annotation },
+    { el: els.setAnnotationActiveColor, presets: PALETTES.annotationActive },
+    { el: els.setAnnotationPopupBg, presets: PALETTES.popupBg },
+    { el: els.setAnnotationPopupText, presets: PALETTES.popupText },
+    { el: els.setAnnotationPopupMuted, presets: PALETTES.popupMuted },
+    { el: els.setAnnotationPillBg, presets: PALETTES.pillBg },
+    { el: els.setAnnotationPillText, presets: PALETTES.popupText },
+    { el: els.setAnnotationPillMuted, presets: PALETTES.popupMuted }
+  ];
+  for (const { el, presets } of bindings) {
+    if (!el) continue;
+    const onChange = el === els.setAccentColor
+      ? (hex) => WSThemeAccent?.applyAccent?.(hex)
+      : undefined;
+    colorSwatchUi.push(mount(el, { presets, onChange }));
+  }
+}
+
+function refreshColorSwatches() {
+  for (const ui of colorSwatchUi) {
+    ui.refresh?.();
+  }
+}
 let dictSearchTimer = null;
 let syncing = false;
 let editingDictId = null;
@@ -130,10 +148,21 @@ function getAnnotationPopupTheme() {
   return document.querySelector('input[name="annotationPopupTheme"]:checked')?.value || 'system';
 }
 
+function getAnnotationPillTheme() {
+  return document.querySelector('input[name="annotationPillTheme"]:checked')?.value || 'light';
+}
+
 function updateAnnotationPopupThemeUi() {
   const custom = getAnnotationPopupTheme() === 'custom';
   if (els.annPopupCustomColors) {
     els.annPopupCustomColors.hidden = !custom;
+  }
+}
+
+function updateAnnotationPillThemeUi() {
+  const custom = getAnnotationPillTheme() === 'custom';
+  if (els.annPillCustomColors) {
+    els.annPillCustomColors.hidden = !custom;
   }
 }
 
@@ -146,7 +175,10 @@ function getClipperFields() {
     note: els.clipperFieldNote.checked,
     url: els.clipperFieldUrl.checked,
     title: els.clipperFieldTitle.checked,
-    date: els.clipperFieldDate.checked
+    date: els.clipperFieldDate.checked,
+    author: els.clipperFieldAuthor.checked,
+    site: els.clipperFieldSite.checked,
+    published: els.clipperFieldPublished.checked
   };
 }
 
@@ -158,20 +190,23 @@ function buildClipperTemplate(format, fields) {
     if (fields.note) lines.push('', '{note}');
 
     const footerParts = [];
-    if (fields.title && fields.url) footerParts.push('— [{title}]({url})');
-    else if (fields.url) footerParts.push('— {url}');
-    else if (fields.title) footerParts.push('— {title}');
+    if (fields.author) footerParts.push('{author}');
+    if (fields.title && fields.url) footerParts.push('[{title}]({url})');
+    else if (fields.url) footerParts.push('{url}');
+    else if (fields.title) footerParts.push('{title}');
+    if (fields.site) footerParts.push('{site}');
+    if (fields.published) footerParts.push('{published}');
+    if (fields.date) footerParts.push('{date}');
 
-    if (fields.date) {
-      footerParts.push(footerParts.length ? ', {date}' : '{date}');
-    }
-
-    if (footerParts.length) lines.push('', footerParts.join(''));
+    if (footerParts.length) lines.push('', `— ${footerParts.join(', ')}`);
   } else {
     lines.push('{text}');
     if (fields.note) lines.push('', '{note}');
 
     const meta = [];
+    if (fields.author) meta.push('Автор: {author}');
+    if (fields.site) meta.push('Сайт: {site}');
+    if (fields.published) meta.push('Опубликовано: {published}');
     if (fields.url) meta.push('Источник: {url}');
     if (fields.title) meta.push('Страница: {title}');
     if (fields.date) meta.push('Дата сохранения: {date}');
@@ -249,6 +284,9 @@ function loadClipperForm(stored) {
   els.clipperFieldUrl.checked = fields.url ?? true;
   els.clipperFieldTitle.checked = fields.title ?? true;
   els.clipperFieldDate.checked = fields.date ?? true;
+  els.clipperFieldAuthor.checked = fields.author ?? true;
+  els.clipperFieldSite.checked = fields.site ?? true;
+  els.clipperFieldPublished.checked = fields.published ?? true;
 
   const autoTemplate = buildClipperTemplate(currentSaveFormat, getClipperFields());
   const storedTemplate = storedTemplates[currentSaveFormat];
@@ -276,6 +314,11 @@ function loadForm(stored) {
   const matchRadio = document.querySelector(`input[name="matchMode"][value="${stored.matchMode || 'whole'}"]`);
   if (matchRadio) matchRadio.checked = true;
 
+  if (els.setAccentColor) {
+    els.setAccentColor.value = stored.accentColor || WS_DEFAULTS.accentColor || '#7c6cf0';
+  }
+  WSThemeAccent?.applyFromSettings?.(stored);
+
   els.setHighlightColor.value = stored.highlightColor || '#ffff00';
   els.setCurrentColor.value = stored.currentHighlightColor || '#ff9632';
   els.setAnnotationColor.value = stored.annotationColor || '#7bed9f';
@@ -300,6 +343,19 @@ function loadForm(stored) {
   els.setAnnotationPopupBg.value = stored.annotationPopupBg || WS_DEFAULTS.annotationPopupBg;
   els.setAnnotationPopupText.value = stored.annotationPopupText || WS_DEFAULTS.annotationPopupText;
   els.setAnnotationPopupMuted.value = stored.annotationPopupMuted || WS_DEFAULTS.annotationPopupMuted;
+
+  const pillThemeRadio = document.querySelector(`input[name="annotationPillTheme"][value="${stored.annotationPillTheme || WS_DEFAULTS.annotationPillTheme || 'light'}"]`);
+  if (pillThemeRadio) pillThemeRadio.checked = true;
+  if (els.setAnnotationPillBg) {
+    els.setAnnotationPillBg.value = stored.annotationPillBg || WS_DEFAULTS.annotationPillBg;
+  }
+  if (els.setAnnotationPillText) {
+    els.setAnnotationPillText.value = stored.annotationPillText || WS_DEFAULTS.annotationPillText;
+  }
+  if (els.setAnnotationPillMuted) {
+    els.setAnnotationPillMuted.value = stored.annotationPillMuted || WS_DEFAULTS.annotationPillMuted;
+  }
+  updateAnnotationPillThemeUi();
   updateAnnotationPopupThemeUi();
 
   loadClipperForm(stored);
@@ -321,15 +377,7 @@ function loadForm(stored) {
   const depthRadio = document.querySelector(`input[name="morphDepth"][value="${stored.morphDepth || 'basic'}"]`);
   if (depthRadio) depthRadio.checked = true;
 
-  if (els.setArchiveScrollDelay) {
-    els.setArchiveScrollDelay.value = stored.archiveScrollStepDelayMs ?? WS_DEFAULTS.archiveScrollStepDelayMs;
-  }
-  if (els.setArchivePrepareTimeout) {
-    els.setArchivePrepareTimeout.value = stored.archivePrepareTimeoutMs ?? WS_DEFAULTS.archivePrepareTimeoutMs;
-  }
-  if (els.setArchiveOmitCredentials) {
-    els.setArchiveOmitCredentials.checked = Boolean(stored.archiveOmitCredentials);
-  }
+  refreshColorSwatches();
 }
 
 function collectSettings() {
@@ -365,6 +413,7 @@ function collectSettings() {
     phraseMode,
     matchMode,
     morphDepth: getMorphDepth(),
+    accentColor: els.setAccentColor?.value || WS_DEFAULTS.accentColor,
     highlightColor: els.setHighlightColor.value,
     currentHighlightColor: els.setCurrentColor.value,
     annotationColor: els.setAnnotationColor.value,
@@ -374,6 +423,10 @@ function collectSettings() {
     annotationPopupBg: els.setAnnotationPopupBg.value,
     annotationPopupText: els.setAnnotationPopupText.value,
     annotationPopupMuted: els.setAnnotationPopupMuted.value,
+    annotationPillTheme: getAnnotationPillTheme(),
+    annotationPillBg: els.setAnnotationPillBg?.value || WS_DEFAULTS.annotationPillBg,
+    annotationPillText: els.setAnnotationPillText?.value || WS_DEFAULTS.annotationPillText,
+    annotationPillMuted: els.setAnnotationPillMuted?.value || WS_DEFAULTS.annotationPillMuted,
     annotationIframes: els.setAnnotationIframes.checked,
     annotationExcludeTags: annTags.length ? annTags : WS_DEFAULTS.annotationExcludeTags,
     annotationExcludeSelectors: annSelectors,
@@ -386,10 +439,7 @@ function collectSettings() {
     searchIframes: els.setIframes.checked,
     searchShadowDom: els.setShadow.checked,
     excludeTags: tags.length ? tags : WS_DEFAULTS.excludeTags,
-    excludeSelectors: selectors,
-    archiveScrollStepDelayMs: Number(els.setArchiveScrollDelay?.value) || WS_DEFAULTS.archiveScrollStepDelayMs,
-    archivePrepareTimeoutMs: Number(els.setArchivePrepareTimeout?.value) || WS_DEFAULTS.archivePrepareTimeoutMs,
-    archiveOmitCredentials: Boolean(els.setArchiveOmitCredentials?.checked)
+    excludeSelectors: selectors
   };
 }
 
@@ -973,6 +1023,7 @@ async function save() {
 
   const settings = collectSettings();
   await WSSettingsStorage.set(settings);
+  WSThemeAccent?.applyFromSettings?.(settings);
 
   await broadcastSettingsUpdate();
 
@@ -993,116 +1044,18 @@ function syncMatchModeToWhole() {
   syncing = false;
 }
 
-const ABOUT_I18N = {
-  ru: {
-    title: 'О нас',
-    desc: 'Версия расширения, лицензия и наша миссия.',
-    versionLabel: 'Версия',
-    licenseLabel: 'Лицензия',
-    missionTitle: 'Миссия',
-    missionDesc: 'Текст доступен на трёх языках.',
-    langGroup: 'Язык текста',
-    paragraphs: [
-      'Сегодня крупнейшие корпорации и научные издательства возводят цифровые стены, требуя плату за доступ к знаниям. Актуальные научные открытия, медицинские исследования и важнейшие данные человечества становятся роскошью, доступной лишь избранным.',
-      'Это в корне неверно. Знание не должно быть товаром. Оно не принадлежит корпорациям — оно принадлежит всему человечеству.',
-      'Мы глубоко убеждены: право на информацию фундаментально. Доступ к знаниям должен быть открыт для каждого человека на Земле — независимо от его бюджета, национальности, происхождения или географии. Границы и кошельки не должны определять, насколько человек может быть образован и свободен.',
-      'У нас нет многомиллионных бюджетов, чтобы разрушить эти стены в одиночку.',
-      'Но у нас есть общая цель и технологии.',
-      'Наше небольшое расширение позволит просто удобно читать статьи в интернете. Просматривать, аннотировать, читать и даже сохранять.'
-    ]
-  },
-  en: {
-    title: 'About us',
-    desc: 'Extension version, license, and our mission.',
-    versionLabel: 'Version',
-    licenseLabel: 'License',
-    missionTitle: 'Mission',
-    missionDesc: 'This text is available in three languages.',
-    langGroup: 'Text language',
-    paragraphs: [
-      'Today the largest corporations and scientific publishers erect digital walls, demanding payment for access to knowledge. Current scientific discoveries, medical research, and humanity’s most important data are becoming a luxury available only to a chosen few.',
-      'This is fundamentally wrong. Knowledge must not be a commodity. It does not belong to corporations — it belongs to all of humanity.',
-      'We firmly believe that the right to information is fundamental. Access to knowledge must be open to every person on Earth — regardless of budget, nationality, origin, or geography. Borders and wallets must not decide how educated and free a person can be.',
-      'We do not have multimillion-dollar budgets to tear these walls down alone.',
-      'But we share a common goal and the technology.',
-      'Our small extension lets you conveniently read articles on the internet — browse, annotate, read, and even save them.'
-    ]
-  },
-  uk: {
-    title: 'Про нас',
-    desc: 'Версія розширення, ліцензія та наша місія.',
-    versionLabel: 'Версія',
-    licenseLabel: 'Ліцензія',
-    missionTitle: 'Місія',
-    missionDesc: 'Текст доступний трьома мовами.',
-    langGroup: 'Мова тексту',
-    paragraphs: [
-      'Сьогодні найбільші корпорації та наукові видавництва зводять цифрові стіни, вимагаючи плату за доступ до знань. Актуальні наукові відкриття, медичні дослідження та найважливіші дані людства стають розкішшю, доступною лише обраним.',
-      'Це докорінно неправильно. Знання не повинно бути товаром. Воно не належить корпораціям — воно належить усьому людству.',
-      'Ми глибоко переконані: право на інформацію є фундаментальним. Доступ до знань має бути відкритим для кожної людини на Землі — незалежно від її бюджету, національності, походження чи географії. Кордони та гаманці не повинні визначати, наскільки людина може бути освіченою і вільною.',
-      'У нас немає багатомільйонних бюджетів, щоб зруйнувати ці стіни наодинці.',
-      'Але у нас є спільна мета і технології.',
-      'Наше невелике розширення дозволить просто зручно читати статті в інтернеті. Переглядати, анотувати, читати і навіть зберігати.'
-    ]
-  }
-};
-
-let aboutLang = 'ru';
-
-function setAboutLang(lang) {
-  const locale = ABOUT_I18N[lang] ? lang : 'ru';
-  aboutLang = locale;
-  const copy = ABOUT_I18N[locale];
-
-  const title = $('about-title');
-  const desc = $('about-desc');
-  const versionLabel = $('about-version-label');
-  const licenseLabel = $('about-license-label');
-  const missionTitle = $('about-mission-title');
-  const missionDesc = $('about-mission-desc');
-  const missionText = $('about-mission-text');
-  const langGroup = document.querySelector('.about-lang-switch');
-
-  if (title) title.textContent = copy.title;
-  if (desc) desc.textContent = copy.desc;
-  if (versionLabel) versionLabel.textContent = copy.versionLabel;
-  if (licenseLabel) licenseLabel.textContent = copy.licenseLabel;
-  if (missionTitle) missionTitle.textContent = copy.missionTitle;
-  if (missionDesc) missionDesc.textContent = copy.missionDesc;
-  if (langGroup) langGroup.setAttribute('aria-label', copy.langGroup);
-
-  if (missionText) {
-    missionText.lang = locale;
-    missionText.replaceChildren(
-      ...copy.paragraphs.map((text) => {
-        const p = document.createElement('p');
-        p.textContent = text;
-        return p;
-      })
-    );
-  }
-
-  document.querySelectorAll('.about-lang-btn').forEach((btn) => {
-    const active = btn.dataset.aboutLang === locale;
-    btn.classList.toggle('active', active);
-    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-  });
-}
-
 function initAbout() {
   const versionEl = $('about-version');
+  const sidebarVersionEl = $('sidebar-version');
   try {
     const manifest = chrome.runtime.getManifest();
-    if (versionEl) versionEl.textContent = manifest.version || '—';
+    const version = manifest.version || '—';
+    if (versionEl) versionEl.textContent = version;
+    if (sidebarVersionEl) sidebarVersionEl.textContent = `v${version}`;
   } catch {
     if (versionEl) versionEl.textContent = '—';
+    if (sidebarVersionEl) sidebarVersionEl.textContent = '';
   }
-
-  document.querySelectorAll('.about-lang-btn').forEach((btn) => {
-    btn.addEventListener('click', () => setAboutLang(btn.dataset.aboutLang));
-  });
-
-  setAboutLang(aboutLang);
 }
 
 function switchSection(sectionId) {
@@ -1118,453 +1071,6 @@ function switchSection(sectionId) {
     panel.hidden = !active;
   });
 
-  if (sectionId === 'archive') {
-    loadArchiveUi().catch(() => {});
-  }
-}
-
-function formatBytes(bytes) {
-  const value = Number(bytes) || 0;
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatArchiveDate(ts) {
-  try {
-    return new Date(ts).toLocaleString('ru-RU');
-  } catch {
-    return '';
-  }
-}
-
-function archiveStageLabel(stage) {
-  const labels = {
-    loading: 'Загрузка страницы…',
-    prepare: 'Подготовка страницы…',
-    collect: 'Сбор содержимого…',
-    build: 'Создание архива…',
-    download: 'Скачивание…',
-    done: 'Готово'
-  };
-  return labels[stage] || stage;
-}
-
-const ARCHIVE_STAGE_PROGRESS = {
-  loading: 10,
-  prepare: 25,
-  collect: 45,
-  build: 70,
-  download: 90,
-  done: 100
-};
-
-let archiveSaveInProgress = false;
-let archiveOpenSelectedFile = null;
-
-function normalizeArchiveInputUrl(raw) {
-  const trimmed = String(raw || '').trim();
-  if (!trimmed) return '';
-  try {
-    const parsed = new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
-    return parsed.href;
-  } catch {
-    return '';
-  }
-}
-
-function setArchiveSaveProgress(stage) {
-  if (!els.archiveSaveProgressWrap) return;
-  els.archiveSaveProgressWrap.hidden = false;
-  if (els.archiveSaveProgressLabel) {
-    els.archiveSaveProgressLabel.textContent = archiveStageLabel(stage);
-  }
-  if (els.archiveSaveProgressBar) {
-    els.archiveSaveProgressBar.classList.remove('is-error');
-    els.archiveSaveProgressBar.style.width = `${ARCHIVE_STAGE_PROGRESS[stage] ?? 0}%`;
-  }
-}
-
-function resetArchiveSaveModal() {
-  archiveSaveInProgress = false;
-  if (els.archiveSaveUrl) els.archiveSaveUrl.value = '';
-  if (els.archiveSaveError) {
-    els.archiveSaveError.hidden = true;
-    els.archiveSaveError.textContent = '';
-  }
-  if (els.archiveSaveProgressWrap) els.archiveSaveProgressWrap.hidden = true;
-  if (els.archiveSaveProgressBar) {
-    els.archiveSaveProgressBar.style.width = '0%';
-    els.archiveSaveProgressBar.classList.remove('is-error');
-  }
-  if (els.archiveSaveSubmit) els.archiveSaveSubmit.disabled = false;
-  if (els.archiveSaveCancel) els.archiveSaveCancel.disabled = false;
-}
-
-function openArchiveSaveModal() {
-  resetArchiveSaveModal();
-  if (!els.archiveSaveModal) return;
-  els.archiveSaveModal.hidden = false;
-  els.archiveSaveUrl?.focus();
-}
-
-function closeArchiveSaveModal() {
-  if (archiveSaveInProgress) return;
-  if (els.archiveSaveModal) els.archiveSaveModal.hidden = true;
-  resetArchiveSaveModal();
-}
-
-function showArchiveSaveError(message) {
-  if (els.archiveSaveError) {
-    els.archiveSaveError.hidden = false;
-    els.archiveSaveError.textContent = message;
-  }
-  if (els.archiveSaveProgressBar) {
-    els.archiveSaveProgressBar.classList.add('is-error');
-  }
-  archiveSaveInProgress = false;
-  if (els.archiveSaveSubmit) els.archiveSaveSubmit.disabled = false;
-  if (els.archiveSaveCancel) els.archiveSaveCancel.disabled = false;
-}
-
-async function submitArchiveSave() {
-  if (archiveSaveInProgress) return;
-
-  const url = normalizeArchiveInputUrl(els.archiveSaveUrl?.value);
-  if (!url || isArchiveRestrictedUrl(url)) {
-    showArchiveSaveError('Укажите корректный адрес страницы (http или https).');
-    return;
-  }
-
-  archiveSaveInProgress = true;
-  if (els.archiveSaveError) els.archiveSaveError.hidden = true;
-  if (els.archiveSaveSubmit) els.archiveSaveSubmit.disabled = true;
-  if (els.archiveSaveCancel) els.archiveSaveCancel.disabled = true;
-  setArchiveSaveProgress('loading');
-
-  const response = await runtimeMessage('ARCHIVE_PAGE_URL', { url });
-  if (!response?.ok) {
-    showArchiveSaveError(response?.message || response?.error || 'Не удалось сохранить страницу.');
-    return;
-  }
-
-  setArchiveSaveProgress('done');
-  archiveSaveInProgress = false;
-  await loadArchiveUi();
-  if (els.archiveSaveModal) els.archiveSaveModal.hidden = true;
-  resetArchiveSaveModal();
-}
-
-function setArchiveOpenProgress(percent, label, isError = false) {
-  if (!els.archiveOpenProgressWrap) return;
-  els.archiveOpenProgressWrap.hidden = false;
-  if (els.archiveOpenProgressLabel && label) {
-    els.archiveOpenProgressLabel.textContent = label;
-  }
-  if (els.archiveOpenProgressBar) {
-    els.archiveOpenProgressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
-    els.archiveOpenProgressBar.classList.toggle('is-error', isError);
-  }
-}
-
-function resetArchiveOpenModal() {
-  archiveOpenSelectedFile = null;
-  if (els.archiveOpenFile) els.archiveOpenFile.value = '';
-  if (els.archiveOpenFilename) {
-    els.archiveOpenFilename.hidden = true;
-    els.archiveOpenFilename.textContent = '';
-  }
-  if (els.archiveOpenError) {
-    els.archiveOpenError.hidden = true;
-    els.archiveOpenError.textContent = '';
-  }
-  if (els.archiveOpenProgressWrap) els.archiveOpenProgressWrap.hidden = true;
-  if (els.archiveOpenProgressBar) {
-    els.archiveOpenProgressBar.style.width = '0%';
-    els.archiveOpenProgressBar.classList.remove('is-error');
-  }
-  if (els.archiveDropzone) els.archiveDropzone.classList.remove('is-dragover');
-  if (els.archiveOpenSubmit) els.archiveOpenSubmit.disabled = true;
-  if (els.archiveOpenCancel) els.archiveOpenCancel.disabled = false;
-}
-
-function openArchiveOpenModal() {
-  resetArchiveOpenModal();
-  if (!els.archiveOpenModal) return;
-  els.archiveOpenModal.hidden = false;
-  els.archiveDropzone?.focus();
-}
-
-function closeArchiveOpenModal() {
-  if (els.archiveOpenModal) els.archiveOpenModal.hidden = true;
-  resetArchiveOpenModal();
-}
-
-function isZipFile(file) {
-  if (!file) return false;
-  const name = (file.name || '').toLowerCase();
-  return name.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed';
-}
-
-function selectArchiveOpenFile(file) {
-  if (!isZipFile(file)) {
-    if (els.archiveOpenError) {
-      els.archiveOpenError.hidden = false;
-      els.archiveOpenError.textContent = 'Выберите файл в формате .zip';
-    }
-    archiveOpenSelectedFile = null;
-    if (els.archiveOpenSubmit) els.archiveOpenSubmit.disabled = true;
-    return;
-  }
-
-  archiveOpenSelectedFile = file;
-  if (els.archiveOpenError) els.archiveOpenError.hidden = true;
-  if (els.archiveOpenFilename) {
-    els.archiveOpenFilename.hidden = false;
-    els.archiveOpenFilename.textContent = file.name;
-  }
-  if (els.archiveOpenSubmit) els.archiveOpenSubmit.disabled = false;
-}
-
-function showArchiveOpenError(message) {
-  if (els.archiveOpenError) {
-    els.archiveOpenError.hidden = false;
-    els.archiveOpenError.textContent = message;
-  }
-  setArchiveOpenProgress(100, message, true);
-  if (els.archiveOpenSubmit) els.archiveOpenSubmit.disabled = false;
-  if (els.archiveOpenCancel) els.archiveOpenCancel.disabled = false;
-}
-
-async function submitArchiveOpen() {
-  const file = archiveOpenSelectedFile;
-  if (!file) return;
-
-  if (els.archiveOpenSubmit) els.archiveOpenSubmit.disabled = true;
-  if (els.archiveOpenCancel) els.archiveOpenCancel.disabled = true;
-  if (els.archiveOpenError) els.archiveOpenError.hidden = true;
-  setArchiveOpenProgress(10, 'Чтение файла…');
-
-  try {
-    const buffer = await file.arrayBuffer();
-    const zipBytes = WSArchiveBytes.normalizeZipBytes(buffer);
-    if (!zipBytes?.byteLength) {
-      showArchiveOpenError('Пустой файл архива');
-      return;
-    }
-    if (!WSArchiveBytes.isZipBytes(zipBytes)) {
-      showArchiveOpenError('Повреждённый архив: файл не является ZIP');
-      return;
-    }
-
-    setArchiveOpenProgress(50, 'Сохранение в кэш…');
-    const id = `pick-${crypto.randomUUID()}`;
-    await WSArchiveCache.put(id, zipBytes, {
-      savedAt: Date.now(),
-      title: file.name.replace(/\.zip$/i, '') || 'Офлайн-страница',
-      filename: file.name
-    });
-
-    setArchiveOpenProgress(80, 'Открытие архива…');
-    const response = await runtimeMessage('ARCHIVE_OPEN', { id });
-    if (!response?.ok) {
-      showArchiveOpenError(response?.error || 'Не удалось открыть архив');
-      return;
-    }
-
-    setArchiveOpenProgress(100, 'Готово');
-    closeArchiveOpenModal();
-  } catch (err) {
-    showArchiveOpenError(err.message || 'Не удалось открыть архив');
-  }
-}
-
-async function clearArchiveJournal() {
-  const confirmed = confirm('Удалить все записи журнала? Файлы на диске не удаляются.');
-  if (!confirmed) return;
-
-  await runtimeMessage('ARCHIVE_JOURNAL_CLEAR');
-  await loadArchiveUi();
-}
-
-async function runtimeMessage(type, payload = {}) {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type, ...payload }, (response) => {
-      const err = chrome.runtime.lastError;
-      if (err) resolve({ ok: false, error: err.message });
-      else resolve(response || { ok: false });
-    });
-  });
-}
-
-function isArchiveRestrictedUrl(url) {
-  if (!url) return true;
-  if (url.includes('/reader/reader.html')) return true;
-  return url.startsWith('chrome://')
-    || url.startsWith('edge://')
-    || url.startsWith('about:')
-    || url.startsWith('chrome-extension://')
-    || url.startsWith('moz-extension://');
-}
-
-async function loadArchiveUi() {
-  const [listResponse, statsResponse] = await Promise.all([
-    runtimeMessage('ARCHIVE_JOURNAL_LIST'),
-    runtimeMessage('ARCHIVE_JOURNAL_STATS')
-  ]);
-
-  const entries = listResponse?.entries || [];
-
-  if (els.archiveStats) {
-    const stats = statsResponse?.stats || { count: entries.length, totalBytes: 0 };
-    els.archiveStats.textContent = `${stats.count} сохранений в журнале · ~${formatBytes(stats.totalBytes)} суммарно`;
-  }
-
-  if (!els.archiveList || !els.archiveEmpty) return;
-
-  els.archiveList.innerHTML = '';
-  els.archiveEmpty.hidden = entries.length > 0;
-
-  for (const entry of entries) {
-    const card = document.createElement('article');
-    card.className = 'archive-item';
-
-    const title = document.createElement('h3');
-    title.className = 'archive-item-title';
-    title.textContent = entry.title || 'Без названия';
-
-    const meta = document.createElement('p');
-    meta.className = 'archive-item-meta';
-    meta.textContent = `${formatArchiveDate(entry.savedAt)} · ${formatBytes(entry.sizeBytes)} · ${entry.filename || 'page.zip'}`;
-
-    const link = document.createElement('a');
-    link.className = 'archive-item-url';
-    link.href = entry.url || '#';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = entry.url || '—';
-
-    const warnings = document.createElement('p');
-    warnings.className = 'archive-item-warnings';
-    if (entry.warnings?.length) {
-      warnings.textContent = entry.warnings.slice(0, 3).join(' · ');
-    } else {
-      warnings.hidden = true;
-    }
-
-    const actions = document.createElement('div');
-    actions.className = 'archive-item-actions';
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'btn-text archive-delete-btn';
-    deleteBtn.textContent = 'Удалить из списка';
-    deleteBtn.title = 'Файл на диске не удаляется';
-    deleteBtn.addEventListener('click', async () => {
-      deleteBtn.disabled = true;
-      await runtimeMessage('ARCHIVE_JOURNAL_DELETE', { id: entry.id });
-      await loadArchiveUi();
-    });
-
-    actions.appendChild(deleteBtn);
-    card.append(title, meta, link, warnings, actions);
-    els.archiveList.appendChild(card);
-  }
-
-  if (els.archiveClearJournal) {
-    els.archiveClearJournal.disabled = entries.length === 0;
-  }
-}
-
-async function onArchiveOpenFileSelected(event) {
-  const file = event.target.files?.[0];
-  if (file) selectArchiveOpenFile(file);
-}
-
-function bindArchive() {
-  els.archiveSaveCurrent?.addEventListener('click', openArchiveSaveModal);
-  els.archiveSaveCancel?.addEventListener('click', closeArchiveSaveModal);
-  els.archiveSaveSubmit?.addEventListener('click', () => {
-    submitArchiveSave().catch((err) => {
-      showArchiveSaveError(err.message || 'Ошибка сохранения');
-    });
-  });
-  els.archiveSaveUrl?.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      submitArchiveSave().catch((err) => {
-        showArchiveSaveError(err.message || 'Ошибка сохранения');
-      });
-    }
-  });
-
-  els.archiveOpenBtn?.addEventListener('click', openArchiveOpenModal);
-  els.archiveOpenCancel?.addEventListener('click', closeArchiveOpenModal);
-  els.archiveOpenSubmit?.addEventListener('click', () => {
-    submitArchiveOpen().catch((err) => {
-      showArchiveOpenError(err.message || 'Не удалось открыть архив');
-    });
-  });
-  els.archiveOpenPick?.addEventListener('click', (event) => {
-    event.stopPropagation();
-    els.archiveOpenFile?.click();
-  });
-  els.archiveOpenFile?.addEventListener('change', onArchiveOpenFileSelected);
-
-  els.archiveDropzone?.addEventListener('click', (event) => {
-    if (event.target === els.archiveOpenPick) return;
-    els.archiveOpenFile?.click();
-  });
-  els.archiveDropzone?.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      els.archiveOpenFile?.click();
-    }
-  });
-  els.archiveDropzone?.addEventListener('dragover', (event) => {
-    event.preventDefault();
-    els.archiveDropzone?.classList.add('is-dragover');
-  });
-  els.archiveDropzone?.addEventListener('dragleave', () => {
-    els.archiveDropzone?.classList.remove('is-dragover');
-  });
-  els.archiveDropzone?.addEventListener('drop', (event) => {
-    event.preventDefault();
-    els.archiveDropzone?.classList.remove('is-dragover');
-    const file = event.dataTransfer?.files?.[0];
-    if (file) selectArchiveOpenFile(file);
-  });
-
-  els.archiveClearJournal?.addEventListener('click', () => {
-    clearArchiveJournal().catch(() => {});
-  });
-
-  document.querySelectorAll('[data-archive-modal-close]').forEach((el) => {
-    el.addEventListener('click', () => {
-      const target = el.getAttribute('data-archive-modal-close');
-      if (target === 'save') closeArchiveSaveModal();
-      if (target === 'open') closeArchiveOpenModal();
-    });
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    if (els.archiveSaveModal && !els.archiveSaveModal.hidden) closeArchiveSaveModal();
-    if (els.archiveOpenModal && !els.archiveOpenModal.hidden) closeArchiveOpenModal();
-  });
-
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type !== 'ARCHIVE_PROGRESS' || !archiveSaveInProgress) return;
-    if (message.stage === 'done') {
-      setArchiveSaveProgress('done');
-      loadArchiveUi().catch(() => {});
-      return;
-    }
-    if (message.stage) {
-      setArchiveSaveProgress(message.stage);
-    }
-  });
 }
 
 function onClipperChange() {
@@ -1587,6 +1093,9 @@ function bindClipper() {
     els.clipperFieldUrl,
     els.clipperFieldTitle,
     els.clipperFieldDate,
+    els.clipperFieldAuthor,
+    els.clipperFieldSite,
+    els.clipperFieldPublished,
     els.clipperCustom
   ].forEach((input) => {
     input.addEventListener('change', onClipperChange);
@@ -1622,17 +1131,19 @@ function bindClipper() {
 
 function bindAutoSave() {
   document.querySelectorAll('input, textarea').forEach((input) => {
+    if (input.closest('.swatch-btn-custom')) return;
     if (input.id === 'set-whole') return;
     if (input.id === 'clipper-field-note') return;
     if (input.id === 'clipper-field-url') return;
     if (input.id === 'clipper-field-title') return;
     if (input.id === 'clipper-field-date') return;
+    if (input.id === 'clipper-field-author') return;
+    if (input.id === 'clipper-field-site') return;
+    if (input.id === 'clipper-field-published') return;
     if (input.id === 'clipper-custom') return;
     if (input.id === 'set-annotation-save-template') return;
     if (input.id === 'settings-import-file') return;
-    if (input.id === 'archive-save-url') return;
-    if (input.id === 'archive-open-file') return;
-    if (input.name === 'matchMode' || input.name === 'phraseMode' || input.name === 'annotationStyle' || input.name === 'annotationSaveFormat' || input.name === 'annotationPopupTheme') return;
+    if (input.name === 'matchMode' || input.name === 'phraseMode' || input.name === 'annotationStyle' || input.name === 'annotationSaveFormat' || input.name === 'annotationPopupTheme' || input.name === 'annotationPillTheme') return;
     input.addEventListener('change', save);
   });
 
@@ -1676,6 +1187,17 @@ function bindSync() {
       save();
     });
   });
+
+  document.querySelectorAll('input[name="annotationPillTheme"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      updateAnnotationPillThemeUi();
+      save();
+    });
+  });
+
+  for (const input of [els.setAnnotationPillBg, els.setAnnotationPillText, els.setAnnotationPillMuted]) {
+    input?.addEventListener('change', save);
+  }
 }
 
 async function loadAnnotationStorageUi() {
@@ -1752,6 +1274,9 @@ async function reset() {
 
 async function init() {
   try {
+    globalThis.WSIcons?.hydrate?.(document);
+    initColorSwatches();
+
     const stored = await WSSettingsStorage.get(WS_DEFAULTS);
     loadForm(stored);
 
@@ -1770,13 +1295,23 @@ async function init() {
     });
     els.annotationStorageClear?.addEventListener('click', clearAnnotationStorage);
     bindAutoSave();
+    els.setAccentColor?.addEventListener('input', () => {
+      WSThemeAccent?.applyAccent?.(els.setAccentColor.value);
+    });
+    const selectPillCustomTheme = () => {
+      const radio = document.querySelector('input[name="annotationPillTheme"][value="custom"]');
+      if (radio && !radio.checked) {
+        radio.checked = true;
+        updateAnnotationPillThemeUi();
+      }
+    };
+    for (const input of [els.setAnnotationPillBg, els.setAnnotationPillText, els.setAnnotationPillMuted]) {
+      input?.addEventListener('input', selectPillCustomTheme);
+    }
     bindSync();
     bindClipper();
     bindLiterature();
-    bindDictionary();
-    bindArchive();
     initAbout();
-    await loadDictionaryUi();
     await loadAnnotationStorageUi();
   } catch (err) {
     if (els.saveStatus) {

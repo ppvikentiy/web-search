@@ -1,133 +1,91 @@
 :root {
-
   --ws-bg: #f5f5f7;
-
   --ws-sidebar-bg: #ebebed;
-
   --ws-card-bg: #ffffff;
-
   --ws-text: #1d1d1f;
-
   --ws-text-secondary: #6e6e73;
-
-  --ws-accent: #007aff;
-
-  --ws-accent-hover: #0066d6;
-
+  --ws-accent: #7c6cf0;
+  --ws-accent-hover: #6f61e8;
+  --ws-icon-chip-bg: #f3f4f8;
+  --ws-icon-chip-fg: #6b7280;
+  --ws-icon-chip-accent: #7c6cf0;
   --ws-border: rgba(0, 0, 0, 0.08);
-
   --ws-surface: #f5f5f7;
-
   --ws-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-
   --ws-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
 
+  /* design.txt — форма: панели/карточки 14px; кнопки и поля — капсула 36px */
+  --ws-radius-panel: 14px;
+  --ws-radius-capsule: 9999px;
+  --ws-control-height: 36px;
+  --ws-segment-inner-height: 30px;
+  --ws-segment-track-padding: 3px;
+  --ws-radius-action-active: 14px;
 
-
-  --ws-radius-xs: 6px;
-
-  --ws-radius-sm: 10px;
-
-  --ws-radius-md: 14px;
-
-  --ws-radius-lg: 18px;
-
-  --ws-radius-pill: 999px;
-
-
-
-  /* Legacy aliases used across extension pages */
+  --ws-radius-xs: var(--ws-radius-action-active);
+  --ws-radius-sm: var(--ws-radius-panel);
+  --ws-radius-md: var(--ws-radius-panel);
+  --ws-radius-lg: var(--ws-radius-panel);
+  --ws-radius-pill: var(--ws-radius-capsule);
 
   --bg: var(--ws-bg);
-
   --sidebar-bg: var(--ws-sidebar-bg);
-
   --card-bg: var(--ws-card-bg);
-
   --text: var(--ws-text);
-
   --text-secondary: var(--ws-text-secondary);
-
   --accent: var(--ws-accent);
-
   --accent-hover: var(--ws-accent-hover);
-
   --border: var(--ws-border);
-
   --surface: var(--ws-surface);
-
   --shadow: var(--ws-shadow);
-
   --font: var(--ws-font);
-
-  --radius-lg: var(--ws-radius-lg);
-
+  --radius-lg: var(--ws-radius-panel);
 }
 
+input[type="range"] {
+  accent-color: var(--ws-user-accent, var(--accent, var(--ws-accent, #7c6cf0)));
+}
 
+input[type="checkbox"].toggle {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  accent-color: var(--ws-user-accent, var(--accent, var(--ws-accent, #7c6cf0)));
+}
+
+input[type="checkbox"].toggle:checked,
+input.toggle:checked {
+  background-color: var(--ws-user-accent, var(--accent, var(--ws-accent, #7c6cf0)));
+}
 
 @media (prefers-color-scheme: dark) {
-
   :root {
-
     --ws-bg: #1e1e1e;
-
     --ws-sidebar-bg: #2c2c2e;
-
     --ws-card-bg: #2c2c2e;
-
     --ws-text: #f5f5f7;
-
     --ws-text-secondary: #98989d;
-
     --ws-border: rgba(255, 255, 255, 0.08);
-
     --ws-surface: #2c2c2e;
-
     --ws-shadow: none;
-
+    --ws-icon-chip-bg: rgba(255, 255, 255, 0.08);
+    --ws-icon-chip-fg: #a8b0c0;
+    --ws-icon-chip-accent: var(--ws-user-accent, #9b8cff);
   }
-
 }
 
-
-
-.ws-squircle-xs {
-
-  border-radius: var(--ws-radius-xs);
-
-  corner-shape: squircle;
-
+.ws-radius-panel {
+  border-radius: var(--ws-radius-panel);
 }
 
-
-
-.ws-squircle-sm {
-
-  border-radius: var(--ws-radius-sm);
-
-  corner-shape: squircle;
-
+.ws-radius-capsule {
+  border-radius: var(--ws-radius-capsule);
 }
 
-
-
-.ws-squircle-md {
-
-  border-radius: var(--ws-radius-md);
-
-  corner-shape: squircle;
-
-}
-
-
-
+/* legacy class names → panel radius */
+.ws-squircle-xs,
+.ws-squircle-sm,
+.ws-squircle-md,
 .ws-squircle-lg {
-
-  border-radius: var(--ws-radius-lg);
-
-  corner-shape: squircle;
-
+  border-radius: var(--ws-radius-panel);
 }
-
-

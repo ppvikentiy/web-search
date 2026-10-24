@@ -55,47 +55,53 @@ globalThis.WSSearchSidebar = (() => {
   }
 
   function isToggleOn(toggle) {
-    return toggle?.classList.contains('ws-toggle-on') ?? false;
+    return Boolean(toggle?.checked);
   }
 
   function setToggleOn(toggle, on) {
     if (!toggle) return;
-    const enabled = Boolean(on);
-    toggle.classList.toggle('ws-toggle-on', enabled);
-    toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
+    toggle.checked = Boolean(on);
   }
 
-  function createToggle(initial = false) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'ws-toggle';
-    btn.setAttribute('role', 'switch');
-    setToggleOn(btn, initial);
-    return btn;
+  function iconChipMarkup(iconName, size = 14, chipClass = 'icon-chip-sm') {
+    return `<span class="icon-chip ${chipClass}" aria-hidden="true">${WSIcons.svg(iconName, size)}</span>`;
   }
 
-  function createOptionRow(labelText, { icon = null } = {}) {
-    const row = document.createElement('div');
+  function createCheckboxToggle(initial = false) {
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'toggle';
+    input.checked = Boolean(initial);
+    return input;
+  }
+
+  function createOptionRow(labelText, { icon = null, iconId = null } = {}) {
+    const row = document.createElement('label');
     row.className = icon ? 'ws-option-row ws-option-row-icon' : 'ws-option-row';
 
     const label = document.createElement('span');
     label.className = 'ws-option-label';
     if (icon) {
-      label.innerHTML = `${WSIcons.svg(icon, 14)}<span>${labelText}</span>`;
+      const chip = document.createElement('span');
+      chip.className = 'icon-chip icon-chip-sm';
+      if (iconId) chip.id = iconId;
+      chip.setAttribute('aria-hidden', 'true');
+      chip.innerHTML = WSIcons.svg(icon, 14);
+      const text = document.createElement('span');
+      text.textContent = labelText;
+      label.append(chip, text);
     } else {
       label.textContent = labelText;
     }
 
-    const toggle = createToggle(false);
+    const toggle = createCheckboxToggle(false);
     row.append(label, toggle);
-    return { row, toggle };
+    return { row, toggle, iconChip: icon ? label.querySelector('.icon-chip') : null };
   }
 
   function wireToggle(toggle, handler) {
-    toggle?.addEventListener('click', (e) => {
-      e.preventDefault();
+    toggle?.addEventListener('change', (e) => {
       e.stopPropagation();
-      setToggleOn(toggle, !isToggleOn(toggle));
       handler?.();
     });
   }
@@ -104,6 +110,7 @@ globalThis.WSSearchSidebar = (() => {
     if (!state || !els.optAnnotationMode || !els.annotationStatus) return;
 
     setToggleOn(els.optAnnotationMode, Boolean(state.annotationMode));
+    els.annotationModeIcon?.classList.toggle('icon-chip-accent', Boolean(state.annotationMode));
     const total = state.annotationTotal ?? 0;
     const current = state.annotationCurrent ?? 0;
 
@@ -285,13 +292,13 @@ globalThis.WSSearchSidebar = (() => {
     wireToggle(els.optAnnotationMode, toggleAnnotationMode);
   }
 
-  function createIconButton(className, title, iconName, size = 16) {
+  function createIconButton(className, title, iconName, size = 16, chipClass = 'icon-chip-sm') {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = className;
+    btn.className = `${className} icon-chip-btn`.trim();
     btn.title = title;
     btn.setAttribute('aria-label', title);
-    btn.innerHTML = WSIcons.svg(iconName, size);
+    btn.innerHTML = iconChipMarkup(iconName, size, chipClass);
     return btn;
   }
 
@@ -307,8 +314,8 @@ globalThis.WSSearchSidebar = (() => {
     tabEl.setAttribute('role', 'button');
     tabEl.setAttribute('aria-label', 'Развернуть панель поиска');
     tabEl.innerHTML = `
-      <span class="ws-sidebar-tab-icon" aria-hidden="true">${WSIcons.svg('search', 16)}</span>
-      ${WSIcons.svg('chevronLeft', 14)}
+      <span class="ws-sidebar-tab-icon" aria-hidden="true">${iconChipMarkup('search', 14, 'icon-chip-sm')}</span>
+      ${iconChipMarkup('chevronLeft', 12, 'icon-chip-xs')}
     `;
 
     panelEl = document.createElement('div');
@@ -334,7 +341,7 @@ globalThis.WSSearchSidebar = (() => {
     readerRow.className = 'ws-reader-row';
     readerRow.innerHTML = `
       <button type="button" class="ws-btn-reader" title="Открыть статью в читателе">
-        ${WSIcons.svg('bookOpen', 14)}
+        ${iconChipMarkup('bookOpen', 14, 'icon-chip-sm')}
         <span>Читатель</span>
       </button>
     `;
@@ -359,10 +366,10 @@ globalThis.WSSearchSidebar = (() => {
     searchRow.className = 'ws-search-row';
     searchRow.innerHTML = `
       <div class="ws-search-input-wrap">
-        <span class="ws-search-field-icon" aria-hidden="true">${WSIcons.svg('search', 14)}</span>
-        <input type="text" class="ws-query-input" placeholder="Слово или фраза…" autocomplete="off" spellcheck="false">
-        <button type="button" class="ws-btn-clear" hidden aria-label="Очистить поиск" title="Очистить">
-          ${WSIcons.svg('x', 12)}
+        <span class="ws-search-field-icon" aria-hidden="true">${iconChipMarkup('search', 14, 'icon-chip-xs')}</span>
+        <input type="text" class="ws-query-input" placeholder="Фраза, кот | пёс, -слово" title="Слова подряд — фраза, в том числе через теги. | или, &amp; оба в блоке, кавычки — точно, -слово пропускает блок, * маска. ё и е совпадают." autocomplete="off" spellcheck="false">
+        <button type="button" class="ws-btn-clear icon-chip-btn" hidden aria-label="Очистить поиск" title="Очистить">
+          ${iconChipMarkup('x', 12, 'icon-chip-xs')}
         </button>
       </div>
       <button type="button" class="ws-btn-primary">Найти</button>
@@ -373,7 +380,7 @@ globalThis.WSSearchSidebar = (() => {
 
     const selectionRow = document.createElement('div');
     selectionRow.className = 'ws-selection-row';
-    selectionRow.innerHTML = `<button type="button" class="ws-btn-selection">${WSIcons.svg('textSelect', 14)}<span>Найти выделенное</span></button>`;
+    selectionRow.innerHTML = `<button type="button" class="ws-btn-selection">${iconChipMarkup('textSelect', 14, 'icon-chip-sm')}<span>Найти выделенное</span></button>`;
     els.btnFindSelection = selectionRow.querySelector('.ws-btn-selection');
 
     const optionsCard = document.createElement('div');
@@ -389,8 +396,9 @@ globalThis.WSSearchSidebar = (() => {
 
     const annotationCard = document.createElement('div');
     annotationCard.className = 'ws-options-card';
-    const annRow = createOptionRow('Режим аннотаций', { icon: 'highlighter' });
+    const annRow = createOptionRow('Режим аннотаций', { icon: 'highlighter', iconId: 'ws-sidebar-annotation-icon' });
     els.optAnnotationMode = annRow.toggle;
+    els.annotationModeIcon = annRow.iconChip || document.getElementById('ws-sidebar-annotation-icon');
     annotationCard.append(annRow.row);
 
     const annotationStatus = document.createElement('p');
@@ -402,12 +410,12 @@ globalThis.WSSearchSidebar = (() => {
     const navRow = document.createElement('div');
     navRow.className = 'ws-nav-row';
     navRow.innerHTML = `
-      <button type="button" class="ws-btn-nav" disabled aria-label="Предыдущее">
-        ${WSIcons.svg('chevronLeft', 14)}
+      <button type="button" class="ws-btn-nav icon-chip-btn" disabled aria-label="Предыдущее">
+        ${iconChipMarkup('chevronLeft', 14, 'icon-chip-sm')}
       </button>
       <span class="ws-counter">0 из 0</span>
-      <button type="button" class="ws-btn-nav" disabled aria-label="Следующее">
-        ${WSIcons.svg('chevronRight', 14)}
+      <button type="button" class="ws-btn-nav icon-chip-btn" disabled aria-label="Следующее">
+        ${iconChipMarkup('chevronRight', 14, 'icon-chip-sm')}
       </button>
     `;
     els.btnPrev = navRow.querySelector('.ws-btn-nav:first-child');

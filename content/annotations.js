@@ -158,6 +158,85 @@ globalThis.WSAnnotations = (() => {
     }
 
     WSDomUtils.setExtensionUiTheme(theme, customProps);
+    applyPillTheme();
+  }
+
+  const PILL_CHROME_VARS = [
+    '--ws-ann-pill-chrome-bg',
+    '--ws-ann-pill-chrome-text',
+    '--ws-ann-pill-chrome-muted',
+    '--ws-ann-pill-chrome-border',
+    '--ws-ann-pill-chrome-shadow',
+    '--ws-ann-pill-btn-hover'
+  ];
+
+  function getPillChromePalette() {
+    const mode = settings.annotationPillTheme || 'light';
+    const light = { bg: '#ffffff', text: '#334155', muted: '#94a3b8' };
+    const dark = { bg: '#1a1a2e', text: '#f0f0f5', muted: '#a0a0b8' };
+    if (mode === 'match-menu') return null;
+    if (mode === 'dark') return dark;
+    if (mode === 'custom') {
+      return {
+        bg: settings.annotationPillBg || light.bg,
+        text: settings.annotationPillText || light.text,
+        muted: settings.annotationPillMuted || light.muted
+      };
+    }
+    return light;
+  }
+
+  function pillChromeStyleProps(bg, text, muted) {
+    return {
+      '--ws-ann-pill-chrome-bg': bg,
+      '--ws-ann-pill-chrome-text': text,
+      '--ws-ann-pill-chrome-muted': muted,
+      '--ws-ann-pill-chrome-border': hexToRgba(text, 0.12),
+      '--ws-ann-pill-chrome-shadow': `0 1px 2px ${hexToRgba(text, 0.04)}, 0 4px 14px ${hexToRgba(text, 0.08)}`,
+      '--ws-ann-pill-btn-hover': hexToRgba(text, 0.06)
+    };
+  }
+
+  function clearPillChromeInline(el, bar, panel) {
+    for (const key of PILL_CHROME_VARS) {
+      el.style.removeProperty(key);
+    }
+    const barProps = ['background', 'backgroundColor', 'borderColor', 'color', 'boxShadow'];
+    const panelProps = ['background', 'backgroundColor', 'borderColor', 'boxShadow'];
+    for (const prop of barProps) bar?.style.removeProperty(prop);
+    for (const prop of panelProps) panel?.style.removeProperty(prop);
+  }
+
+  function applyPillThemeToElement(el) {
+    if (!el) return;
+    const bar = el.querySelector('.ws-pill-bar');
+    const panel = el.querySelector('.ws-pill-panel');
+    const palette = getPillChromePalette();
+    if (!palette) {
+      clearPillChromeInline(el, bar, panel);
+      el.dataset.wsPillTheme = 'match-menu';
+      return;
+    }
+    const props = pillChromeStyleProps(palette.bg, palette.text, palette.muted);
+    for (const [key, value] of Object.entries(props)) {
+      el.style.setProperty(key, value);
+    }
+    if (bar) {
+      bar.style.backgroundColor = palette.bg;
+      bar.style.borderColor = props['--ws-ann-pill-chrome-border'];
+      bar.style.color = palette.text;
+      bar.style.boxShadow = props['--ws-ann-pill-chrome-shadow'];
+    }
+    if (panel) {
+      panel.style.backgroundColor = palette.bg;
+      panel.style.borderColor = props['--ws-ann-pill-chrome-border'];
+      panel.style.boxShadow = props['--ws-ann-popup-shadow'] || props['--ws-ann-pill-chrome-shadow'];
+    }
+    el.dataset.wsPillTheme = settings.annotationPillTheme || 'light';
+  }
+
+  function applyPillTheme() {
+    applyPillThemeToElement(document.getElementById('ws-annotation-pill'));
   }
 
   function applyColors(newSettings) {
@@ -167,6 +246,7 @@ globalThis.WSAnnotations = (() => {
     root.style.setProperty('--ws-annotation-active-color', settings.annotationActiveColor || '#1e90ff');
     root.dataset.wsAnnotationStyle = settings.annotationStyle || 'background';
     applyPopupTheme(newSettings);
+    applyPillTheme();
   }
 
   function isExcludedNode(node) {
@@ -1117,6 +1197,7 @@ globalThis.WSAnnotations = (() => {
     destroy,
     isTopFrame,
     applyColors,
+    applyPillThemeToElement,
     createFromSelection,
     clearAll,
     clearVisuals,

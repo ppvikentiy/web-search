@@ -7,24 +7,18 @@
   <title>Читатель</title>
   <link rel="stylesheet" href="../lib/tokens.css">
   <link rel="stylesheet" href="../lib/icons.css">
+  <link rel="stylesheet" href="../lib/color-swatches.css">
   <link rel="stylesheet" href="reader.css">
   <link rel="stylesheet" href="../content/highlights.css">
   <link rel="stylesheet" href="../content/annotations.css">
-  <link rel="stylesheet" href="../content/dictionary.css">
 </head>
 <body>
   <div id="ws-reader-progress" class="ws-reader-progress" aria-hidden="true"></div>
   <div id="ws-reader-app" hidden>
     <header class="ws-reader-toolbar">
       <div class="ws-reader-toolbar-start">
-        <button type="button" id="ws-reader-history-back" class="ws-reader-history-btn" title="Предыдущая статья" disabled>
-          <span data-ws-icon="chevronLeft" data-ws-icon-size="14"></span>
-        </button>
-        <button type="button" id="ws-reader-history-forward" class="ws-reader-history-btn" title="Следующая статья" disabled>
-          <span data-ws-icon="chevronRight" data-ws-icon-size="14"></span>
-        </button>
         <button type="button" id="ws-reader-back" class="ws-reader-back-btn">
-          <span data-ws-icon="arrowLeft" data-ws-icon-size="14"></span>
+          <span data-ws-icon="arrowLeft" data-ws-icon-size="15"></span>
           <span>К оригиналу</span>
         </button>
         <div id="ws-reader-pill-mount"></div>
@@ -61,11 +55,14 @@
   <script src="../lib/defaults.js"></script>
   <script src="../lib/settings-storage.js"></script>
   <script src="../lib/injection-manifest.js"></script>
+  <script src="../lib/icon-paths.js"></script>
   <script src="../lib/icons.js"></script>
+  <script src="../lib/color-swatches.js"></script>
   <script src="../lib/word-boundary.js"></script>
+  <script src="../lib/query-parser.js"></script>
   <script src="../lib/dom-utils.js"></script>
   <script src="../lib/annotation-storage.js"></script>
-  <script src="../lib/user-dictionary.js"></script>
+  <script src="../lib/theme-accent.js"></script>
   <script src="../content/morphology.js"></script>
   <script src="../content/dom-search.js"></script>
   <script src="../content/annotations.js"></script>
@@ -76,7 +73,6 @@
   <script src="../lib/turndown-plugin-gfm.js"></script>
   <script src="../lib/reader-export.js"></script>
   <script src="../content/annotation-note.js"></script>
-  <script src="../content/dictionary-popup.js"></script>
   <script src="../lib/dompurify.min.js"></script>
   <script src="../content/reader-extract.js"></script>
   <script src="reader-pill.js"></script>

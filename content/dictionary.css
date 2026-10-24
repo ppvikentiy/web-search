@@ -15,9 +15,6 @@
   color: var(--ws-ann-popup-text);
 
   border-radius: var(--ws-radius-lg);
-
-  corner-shape: squircle;
-
   box-shadow: var(--ws-ann-popup-shadow);
 
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

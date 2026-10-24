@@ -114,36 +114,53 @@ globalThis.WSAnnotationNote = (() => {
     document.documentElement.appendChild(popoverEl);
   }
 
+  function appendMenuButton(actions, className, label, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.textContent = label;
+    btn.setAttribute('role', 'menuitem');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClick(btn);
+    });
+    actions.appendChild(btn);
+    return btn;
+  }
+
+  function fillAnnotationMenuActions(actions, id, meta) {
+    const hasNote = Boolean(meta.note);
+    const btnClass = 'ws-ann-menu-btn';
+    const dangerClass = 'ws-ann-menu-btn ws-ann-menu-btn-danger';
+
+    appendMenuButton(actions, btnClass, hasNote ? 'Редактировать заметку' : 'Добавить заметку', () => {
+      openNoteEditor(id, meta.note || '');
+    });
+    appendMenuButton(actions, btnClass, 'Экспорт цитаты', () => {
+      saveAnnotation(id);
+      closeMenu();
+    });
+    appendMenuButton(actions, btnClass, 'Копировать как библиографическую ссылку', (btn) => {
+      copyBibliography(id, btn);
+    });
+    appendMenuButton(actions, btnClass, 'Экспортировать как литературу', (btn) => {
+      saveLiterature(id, btn);
+    });
+    appendMenuButton(actions, dangerClass, 'Удалить аннотацию', () => {
+      callbacks.removeGroup?.(id);
+      closeAll();
+      callbacks.onChange?.();
+    });
+  }
+
   function renderMenuActions(id) {
     const meta = callbacks.getMeta?.(id) || { note: '' };
-    const hasNote = Boolean(meta.note);
 
     menuEl.innerHTML = '';
 
     const actions = document.createElement('div');
     actions.className = 'ws-ann-menu-actions';
-
-    const btnNote = document.createElement('button');
-    btnNote.type = 'button';
-    btnNote.className = 'ws-ann-menu-btn';
-    btnNote.textContent = hasNote ? 'Редактировать заметку' : 'Добавить заметку';
-    btnNote.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openNoteEditor(id, meta.note || '');
-    });
-
-    const btnDelete = document.createElement('button');
-    btnDelete.type = 'button';
-    btnDelete.className = 'ws-ann-menu-btn ws-ann-menu-btn-danger';
-    btnDelete.textContent = 'Удалить аннотацию';
-    btnDelete.addEventListener('click', (e) => {
-      e.stopPropagation();
-      callbacks.removeGroup?.(id);
-      closeAll();
-      callbacks.onChange?.();
-    });
-
-    actions.append(btnNote, btnDelete);
+    fillAnnotationMenuActions(actions, id, meta);
     menuEl.appendChild(actions);
   }
 
@@ -227,9 +244,25 @@ globalThis.WSAnnotationNote = (() => {
   }
 
   function getPageSourceMeta() {
+    const fromReader = callbacks.getSourceMeta?.();
+    if (fromReader) {
+      return {
+        url: fromReader.url || getPageUrlForExport(),
+        title: fromReader.title || '',
+        author: fromReader.author || '',
+        published: fromReader.published || '',
+        site: fromReader.site || '',
+        date: new Date()
+      };
+    }
+
+    const extracted = globalThis.WSPageMeta?.extract?.(document) || {};
     return {
       url: getPageUrlForExport(),
-      title: document.title || '',
+      title: extracted.title || document.title || '',
+      author: extracted.author || '',
+      published: extracted.published || '',
+      site: extracted.site || '',
       date: new Date()
     };
   }
@@ -237,12 +270,16 @@ globalThis.WSAnnotationNote = (() => {
   function saveAnnotation(id) {
     const meta = callbacks.getMeta?.(id) || { note: '' };
     const settings = callbacks.getSettings?.() || WS_DEFAULTS;
+    const source = getPageSourceMeta();
     WSAnnotationExport.downloadAnnotation({
       text: WSAnnotations.getGroupText(id),
       note: meta.note || '',
-      url: getPageUrlForExport(),
-      title: document.title || '',
-      date: new Date()
+      url: source.url,
+      title: source.title,
+      author: source.author,
+      site: source.site,
+      published: source.published,
+      date: source.date
     }, settings);
   }
 
@@ -284,7 +321,12 @@ globalThis.WSAnnotationNote = (() => {
     }
 
     const settings = callbacks.getSettings?.() || WS_DEFAULTS;
-    exporter.downloadLiterature(getPageSourceMeta(), settings);
+    const meta = callbacks.getMeta?.(id) || { note: '' };
+    exporter.downloadLiterature({
+      ...getPageSourceMeta(),
+      text: WSAnnotations.getGroupText(id),
+      note: meta.note || ''
+    }, settings);
 
     if (!buttonEl) return;
 
@@ -517,6 +559,7 @@ globalThis.WSAnnotationNote = (() => {
       onChange: options.onChange,
       getMeta: options.getMeta,
       getSettings: options.getSettings,
+      getSourceMeta: options.getSourceMeta,
       setNote: options.setNote,
       deleteNote: options.deleteNote,
       removeGroup: options.removeGroup

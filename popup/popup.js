@@ -15,17 +15,11 @@ const els = {
   btnReaderExit: $('btn-reader-exit'),
   btnSettings: $('btn-settings'),
   btnFindSelection: $('btn-find-selection'),
-  btnQrPage: $('btn-qr-page'),
-  btnArchive: $('btn-archive-offline'),
-  qrPanel: $('qr-panel'),
-  qrImage: $('qr-image'),
-  qrUrl: $('qr-url'),
-  btnQrCopy: $('btn-qr-copy'),
-  btnQrDownload: $('btn-qr-download'),
   optCase: $('opt-case'),
   optWhole: $('opt-whole'),
   optMorph: $('opt-morph'),
   optAnnotationMode: $('opt-annotation-mode'),
+  annotationModeIcon: $('annotation-mode-icon'),
   annotationStatus: $('annotation-status')
 };
 
@@ -36,9 +30,6 @@ let appSettings = null;
 let searchActiveOnPage = false;
 let lastSearchedQuery = '';
 let annotationModeOnPage = false;
-let qrPanelVisible = false;
-let qrDataUrl = '';
-
 function getDefaults() {
   return globalThis.WS_DEFAULTS || {};
 }
@@ -175,7 +166,6 @@ function updateReaderUI() {
   if (els.btnReader) els.btnReader.hidden = readerMode;
   if (els.btnReaderExit) els.btnReaderExit.hidden = !readerMode;
   if (els.btnDock) els.btnDock.hidden = readerMode;
-  if (els.btnArchive) els.btnArchive.hidden = readerMode;
 
   if (readerMode) {
     setStatus('Поиск и аннотации — в панели рядом с «К оригиналу».');
@@ -248,6 +238,8 @@ function updateAnnotationStatus(state) {
   const total = state.annotationTotal ?? 0;
   const current = state.annotationCurrent ?? 0;
 
+  els.annotationModeIcon?.classList.toggle('icon-chip-accent', annotationModeOnPage);
+
   if (annotationModeOnPage) {
     els.annotationStatus.textContent = total
       ? `Аннотаций: ${current} из ${total}`
@@ -278,15 +270,13 @@ function readSettingsFromForm() {
 function getSearchOptions() {
   const stored = appSettings || getDefaults();
   const form = readSettingsFromForm();
-  const query = els.query.value.trim();
-  const isPhrase = /\s/.test(query);
   const phraseMode = stored.phraseMode || 'exact';
-  const wholeWord = isPhrase ? false : Boolean(form.wholeWord);
+  const wholeWord = Boolean(form.wholeWord);
   return {
     caseSensitive: Boolean(form.caseSensitive),
     wholeWord,
     useMorphology: Boolean(form.useMorphology) || phraseMode === 'morph',
-    phraseMode: isPhrase ? phraseMode : 'exact',
+    phraseMode,
     matchMode: wholeWord ? 'whole' : 'substring',
     morphDepth: stored.morphDepth || 'basic'
   };
@@ -333,6 +323,7 @@ async function loadSettings() {
   const defaults = getDefaults();
   const stored = await WSSettingsStorage.get(defaults);
   appSettings = { ...defaults, ...stored };
+  globalThis.WSThemeAccent?.applyFromSettings?.(appSettings);
   applySettingsToForm();
 }
 
@@ -404,65 +395,6 @@ async function toggleAnnotationMode() {
   updateUI(state);
 }
 
-function truncateUrl(url, max = 64) {
-  if (!url || url.length <= max) return url || '';
-  return `${url.slice(0, max - 1)}…`;
-}
-
-async function togglePageQr() {
-  if (qrPanelVisible) {
-    els.qrPanel.hidden = true;
-    qrPanelVisible = false;
-    els.btnQrPage?.classList.remove('active');
-    return;
-  }
-
-  if (isRestrictedTabUrl(activeTabUrl)) {
-    setStatus('QR недоступен на этой странице.', true);
-    return;
-  }
-
-  const url = activeTabUrl?.trim();
-  if (!url) {
-    setStatus('Нет URL для QR-кода.', true);
-    return;
-  }
-
-  try {
-    qrDataUrl = await globalThis.WSQr.generateDataUrl(url, 180);
-    els.qrImage.src = qrDataUrl;
-    els.qrUrl.textContent = truncateUrl(url);
-    els.qrUrl.title = url;
-    els.qrPanel.hidden = false;
-    qrPanelVisible = true;
-    els.btnQrPage?.classList.add('active');
-    setStatus('');
-  } catch (err) {
-    setStatus(err.message || 'Не удалось создать QR-код.', true);
-  }
-}
-
-async function copyPageUrl() {
-  const url = activeTabUrl?.trim();
-  if (!url) return;
-
-  try {
-    await navigator.clipboard.writeText(url);
-    setStatus('Ссылка скопирована.');
-  } catch {
-    setStatus('Не удалось скопировать ссылку.', true);
-  }
-}
-
-function downloadQrPng() {
-  if (!qrDataUrl) return;
-
-  const link = document.createElement('a');
-  link.href = qrDataUrl;
-  link.download = 'page-qr.png';
-  link.click();
-}
-
 function openSettings() {
   const fallbackUrl = chrome.runtime.getURL('settings/settings.html');
   chrome.runtime.openOptionsPage(() => {
@@ -471,57 +403,6 @@ function openSettings() {
     }
   });
   window.close();
-}
-
-function formatArchiveStage(stage) {
-  const labels = {
-    prepare: 'Подготовка страницы…',
-    collect: 'Сбор содержимого…',
-    build: 'Создание архива…',
-    download: 'Скачивание…',
-    done: 'Готово'
-  };
-  return labels[stage] || stage;
-}
-
-async function savePageOffline() {
-  if (!activeTabId) return;
-
-  if (isReaderTabActive) {
-    setStatus('Сохранение недоступно во вкладке читателя.', true);
-    return;
-  }
-
-  if (isRestrictedTabUrl(activeTabUrl)) {
-    setStatus('Сохранение недоступно на этой странице.', true);
-    return;
-  }
-
-  if (els.btnArchive) els.btnArchive.disabled = true;
-  setStatus('Подготовка страницы…');
-
-  try {
-    const response = await new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: 'ARCHIVE_PAGE', tabId: activeTabId }, (result) => {
-        const err = chrome.runtime.lastError;
-        resolve(err ? { ok: false, message: err.message } : result);
-      });
-    });
-
-    if (!response?.ok) {
-      setStatus(response?.message || 'Не удалось сохранить страницу.', true);
-      return;
-    }
-
-    const warnings = response.warnings?.length
-      ? ` (${response.warnings.length} предупр.)`
-      : '';
-    setStatus(`Сохранено: ${response.filename}${warnings}`);
-  } catch (err) {
-    setStatus(err.message || 'Не удалось сохранить страницу.', true);
-  } finally {
-    if (els.btnArchive) els.btnArchive.disabled = false;
-  }
 }
 
 async function dockToSidebar() {
@@ -618,15 +499,11 @@ async function init() {
 
 els.btnSearch?.addEventListener('click', runSearch);
 els.btnFindSelection?.addEventListener('click', searchSelection);
-els.btnQrPage?.addEventListener('click', togglePageQr);
-els.btnQrCopy?.addEventListener('click', copyPageUrl);
-els.btnQrDownload?.addEventListener('click', downloadQrPng);
 els.btnClear?.addEventListener('click', clearSearch);
 els.btnPrev?.addEventListener('click', () => navigate('PREV'));
 els.btnNext?.addEventListener('click', () => navigate('NEXT'));
 els.btnDock?.addEventListener('click', dockToSidebar);
 els.btnReader?.addEventListener('click', openReader);
-els.btnArchive?.addEventListener('click', savePageOffline);
 els.btnReaderExit?.addEventListener('click', exitReaderFromPopup);
 els.btnSettings?.addEventListener('click', openSettings);
 
@@ -661,15 +538,6 @@ els.query?.addEventListener('input', updateClearButton);
 });
 
 els.optAnnotationMode?.addEventListener('change', toggleAnnotationMode);
-
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.type !== 'ARCHIVE_PROGRESS') return;
-  if (message.tabId != null && message.tabId !== activeTabId) return;
-  if (message.stage === 'done' && message.entry?.filename) return;
-  if (message.stage) {
-    setStatus(formatArchiveStage(message.stage));
-  }
-});
 
 function startInit() {
   window.addEventListener('error', (event) => {

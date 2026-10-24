@@ -21,3 +21,6 @@ Desktop.ini
 release/
 dist/
 build/
+
+# Dev-only icon generation
+node_modules/

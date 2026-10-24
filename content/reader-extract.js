@@ -181,15 +181,23 @@ globalThis.WSReaderExtract = (() => {
     contentHtml = normalizeContentUrls(contentHtml, baseUrl);
     contentHtml = shrinkContentHtml(contentHtml, baseUrl);
 
+    const pageMeta = globalThis.WSPageMeta?.extract?.(document) || {};
+    const author = pageMeta.author
+      || globalThis.WSPageMeta?.cleanPersonName?.(article.byline)
+      || String(article.byline || '').trim();
+    const siteName = pageMeta.site || (article.siteName || '').trim();
+    const publishedTime = pageMeta.published || (article.publishedTime || '').trim();
+
     return {
       ok: true,
       data: {
         sourceUrl: location.href.split('#')[0],
-        title: (article.title || document.title || '').trim(),
-        byline: (article.byline || '').trim(),
-        siteName: (article.siteName || '').trim(),
-        publishedTime: (article.publishedTime || '').trim(),
-        excerpt: (article.excerpt || '').trim(),
+        title: (article.title || pageMeta.title || document.title || '').trim(),
+        byline: author,
+        author,
+        siteName,
+        publishedTime,
+        excerpt: (article.excerpt || pageMeta.description || '').trim(),
         contentHtml,
         dir: article.dir || ''
       }

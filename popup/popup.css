@@ -64,7 +64,39 @@ body {
 
   align-items: center;
 
-  gap: 2px;
+  gap: 6px;
+
+}
+
+
+
+.icon-chip-btn {
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  border-radius: 50%;
+
+}
+
+
+
+.icon-chip-btn:disabled {
+
+  opacity: 0.35;
+
+  cursor: not-allowed;
 
 }
 
@@ -72,47 +104,15 @@ body {
 
 .btn-icon {
 
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  width: 28px;
-
-  height: 28px;
-
-  background: transparent;
-
-  border: none;
-
-  color: var(--accent);
-
-  cursor: pointer;
-
-  border-radius: var(--ws-radius-xs);
-
-  corner-shape: squircle;
-
-  padding: 0;
-
-  transition: background 0.15s;
+  flex-shrink: 0;
 
 }
 
 
 
-.btn-icon:hover {
+.btn-icon.active .icon-chip {
 
-  background: rgba(0, 122, 255, 0.1);
-
-}
-
-
-
-.btn-icon.active {
-
-  background: rgba(0, 122, 255, 0.15);
+  color: var(--ws-icon-chip-accent);
 
 }
 
@@ -125,9 +125,6 @@ body {
   background: var(--surface);
 
   border-radius: var(--ws-radius-sm);
-
-  corner-shape: squircle;
-
   overflow: hidden;
 
 }
@@ -218,7 +215,7 @@ body {
 
   justify-content: center;
 
-  gap: 6px;
+  gap: 8px;
 
   width: 100%;
 
@@ -226,13 +223,12 @@ body {
 
   border: 1px dashed var(--border);
 
-  border-radius: var(--ws-radius-sm);
-
-  corner-shape: squircle;
-
+  border-radius: var(--ws-radius-capsule);
+  min-height: var(--ws-control-height);
+  box-sizing: border-box;
   background: transparent;
 
-  color: var(--accent);
+  color: var(--text);
 
   font-family: inherit;
 
@@ -250,9 +246,17 @@ body {
 
 .btn-selection:hover {
 
-  background: rgba(0, 122, 255, 0.06);
+  background: rgba(124, 108, 240, 0.06);
 
-  border-color: rgba(0, 122, 255, 0.35);
+  border-color: rgba(124, 108, 240, 0.28);
+
+}
+
+
+
+.btn-selection:hover .icon-chip {
+
+  color: var(--ws-icon-chip-accent);
 
 }
 
@@ -274,7 +278,7 @@ body {
 
   background: var(--surface);
 
-  border-radius: 10px;
+  border-radius: var(--ws-radius-panel);
 
   text-align: center;
 
@@ -339,9 +343,6 @@ body {
   border: 1px solid var(--border);
 
   border-radius: var(--ws-radius-sm);
-
-  corner-shape: squircle;
-
   background: var(--bg);
 
   color: var(--text);
@@ -406,15 +407,21 @@ body {
 
   position: absolute;
 
-  left: 10px;
+  left: 8px;
 
   display: flex;
 
   align-items: center;
 
-  color: var(--text-secondary);
-
   pointer-events: none;
+
+}
+
+
+
+.search-field-icon .icon-chip {
+
+  background: transparent;
 
 }
 
@@ -424,14 +431,13 @@ body {
 
   width: 100%;
 
-  padding: 8px 32px 8px 32px;
+  padding: 8px 34px 8px 38px;
 
   border: 1px solid var(--border);
 
-  border-radius: var(--ws-radius-sm);
-
-  corner-shape: squircle;
-
+  border-radius: var(--ws-radius-capsule);
+  min-height: var(--ws-control-height);
+  box-sizing: border-box;
   font-family: inherit;
 
   font-size: 13px;
@@ -452,43 +458,9 @@ body {
 
   top: 50%;
 
-  right: 6px;
+  right: 4px;
 
   transform: translateY(-50%);
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  width: 22px;
-
-  height: 22px;
-
-  padding: 0;
-
-  border: none;
-
-  border-radius: 50%;
-
-  background: transparent;
-
-  color: var(--text-secondary);
-
-  cursor: pointer;
-
-  transition: background 0.15s, color 0.15s;
-
-}
-
-
-
-.btn-clear:hover {
-
-  background: rgba(0, 0, 0, 0.06);
-
-  color: var(--text);
 
 }
 
@@ -510,7 +482,7 @@ body {
 
   background: #fff;
 
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(124, 108, 240, 0.2);
 
 }
 
@@ -532,11 +504,10 @@ body {
 
   border: none;
 
-  border-radius: var(--ws-radius-sm);
-
-  corner-shape: squircle;
-
-  padding: 8px 14px;
+  border-radius: var(--ws-radius-capsule);
+  min-height: var(--ws-control-height);
+  padding: 0 16px;
+  box-sizing: border-box;
 
   font-family: inherit;
 
@@ -577,9 +548,6 @@ body {
   background: var(--surface);
 
   border-radius: var(--ws-radius-sm);
-
-  corner-shape: squircle;
-
   overflow: hidden;
 
 }
@@ -634,6 +602,10 @@ body {
 
 .toggle {
 
+  -webkit-appearance: none;
+
+  -moz-appearance: none;
+
   appearance: none;
 
   width: 40px;
@@ -641,6 +613,8 @@ body {
   height: 24px;
 
   background: #e9e9ea;
+
+  border: none;
 
   border-radius: 12px;
 
@@ -650,7 +624,9 @@ body {
 
   flex-shrink: 0;
 
-  transition: background 0.2s;
+  transition: background 0.2s, background-color 0.2s;
+
+  accent-color: var(--ws-user-accent, var(--accent, var(--ws-accent, #7c6cf0)));
 
 }
 
@@ -684,7 +660,7 @@ body {
 
 .toggle:checked {
 
-  background: #34c759;
+  background-color: var(--ws-user-accent, var(--accent, var(--ws-accent, #7c6cf0)));
 
 }
 
@@ -716,39 +692,15 @@ body {
 
 .btn-nav {
 
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  width: 32px;
-
-  height: 32px;
-
-  background: var(--surface);
-
-  border: 1px solid var(--border);
-
-  border-radius: var(--ws-radius-sm);
-
-  corner-shape: squircle;
-
-  color: var(--text);
-
-  cursor: pointer;
-
-  padding: 0;
-
-  transition: background 0.15s, opacity 0.15s;
+  flex-shrink: 0;
 
 }
 
 
 
-.btn-nav:hover:not(:disabled) {
+.btn-nav:hover:not(:disabled) .icon-chip {
 
-  background: #ebebed;
+  color: var(--ws-icon-chip-accent);
 
 }
 

@@ -2,13 +2,18 @@
   --ws-bg: #ffffff;
   --ws-text: #1d1d1f;
   --ws-text-secondary: #6e6e73;
-  --ws-accent: #007aff;
-  --ws-accent-hover: #0066d6;
+  --ws-accent: var(--ws-user-accent, #7c6cf0);
+  --accent: var(--ws-user-accent, #7c6cf0);
+  --ws-accent-hover: color-mix(in srgb, var(--ws-accent) 86%, #1e1b4b);
+  --accent-hover: var(--ws-accent-hover);
   --ws-border: rgba(0, 0, 0, 0.1);
   --ws-surface: #f5f5f7;
   --ws-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  --ws-icon-chip-bg: #f3f4f8;
+  --ws-icon-chip-fg: #6b7280;
+  --ws-icon-chip-accent: var(--ws-user-accent, var(--ws-accent, #7c6cf0));
   --ws-sidebar-width: 320px;
-  --ws-tab-width: 32px;
+  --ws-tab-width: 40px;
 
   position: fixed;
   top: 8px;
@@ -46,7 +51,6 @@
   border: 1px solid var(--ws-border);
   border-right: none;
   border-radius: var(--ws-radius-lg) 0 0 var(--ws-radius-lg);
-  corner-shape: squircle;
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: background 0.15s;
@@ -64,8 +68,8 @@
   background: var(--ws-surface);
 }
 
-#ws-search-sidebar .ws-sidebar-tab-icon {
-  color: var(--ws-accent);
+#ws-search-sidebar .ws-sidebar-tab-icon .icon-chip {
+  color: var(--ws-icon-chip-accent);
 }
 
 #ws-search-sidebar .ws-sidebar-panel {
@@ -84,7 +88,6 @@
   border: 1px solid var(--ws-border);
   border-right: none;
   border-radius: var(--ws-radius-lg) 0 0 var(--ws-radius-lg);
-  corner-shape: squircle;
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
   transition: transform 0.22s ease, opacity 0.22s ease;
 }
@@ -134,34 +137,39 @@
 #ws-search-sidebar .ws-sidebar-header-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
 }
 
-#ws-search-sidebar .ws-btn-icon {
-  display: flex;
+#ws-search-sidebar .icon-chip-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: none;
-  color: var(--ws-accent);
-  cursor: pointer;
-  border-radius: var(--ws-radius-xs);
-  corner-shape: squircle;
   padding: 0;
-  transition: background 0.15s;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-#ws-search-sidebar .ws-btn-icon:hover {
-  background: rgba(0, 122, 255, 0.1);
+#ws-search-sidebar .icon-chip-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+#ws-search-sidebar .icon-chip-btn:hover:not(:disabled) .icon-chip {
+  background: color-mix(in srgb, var(--ws-icon-chip-bg) 70%, #000 4%);
+}
+
+#ws-search-sidebar .icon-chip-btn:hover:not(:disabled) .icon-chip-accent,
+#ws-search-sidebar .icon-chip-accent {
+  color: var(--ws-icon-chip-accent);
 }
 
 #ws-search-sidebar .ws-page-info-card {
   margin: 0 16px 12px;
   background: var(--ws-surface);
   border-radius: var(--ws-radius-sm);
-  corner-shape: squircle;
   overflow: hidden;
 }
 
@@ -213,8 +221,9 @@
   width: 100%;
   padding: 6px 10px;
   border: 1px dashed var(--ws-border);
-  border-radius: var(--ws-radius-sm);
-  corner-shape: squircle;
+  border-radius: var(--ws-radius-capsule);
+  min-height: var(--ws-control-height);
+  box-sizing: border-box;
   background: transparent;
   color: var(--ws-accent);
   font-family: inherit;
@@ -225,8 +234,12 @@
 }
 
 #ws-search-sidebar .ws-btn-selection:hover {
-  background: rgba(0, 122, 255, 0.06);
-  border-color: rgba(0, 122, 255, 0.35);
+  background: color-mix(in srgb, var(--ws-accent) 6%, transparent);
+  border-color: color-mix(in srgb, var(--ws-accent) 28%, transparent);
+}
+
+#ws-search-sidebar .ws-btn-selection:hover .icon-chip {
+  color: var(--ws-icon-chip-accent);
 }
 
 #ws-search-sidebar .ws-search-input-wrap {
@@ -239,22 +252,27 @@
 
 #ws-search-sidebar .ws-search-field-icon {
   position: absolute;
-  left: 10px;
+  left: 8px;
   display: flex;
   align-items: center;
-  color: var(--ws-text-secondary);
   pointer-events: none;
   z-index: 1;
+}
+
+#ws-search-sidebar .ws-search-field-icon .icon-chip {
+  background: transparent;
+  color: var(--ws-icon-chip-fg);
 }
 
 #ws-search-sidebar .ws-query-input {
   width: 100%;
   min-width: 0 !important;
   max-width: 100% !important;
-  padding: 8px 32px 8px 32px;
+  padding: 8px 34px 8px 38px;
   border: 1px solid var(--ws-border);
-  border-radius: var(--ws-radius-sm);
-  corner-shape: squircle;
+  border-radius: var(--ws-radius-capsule);
+  min-height: var(--ws-control-height);
+  box-sizing: border-box;
   font-family: inherit;
   font-size: 13px;
   color: var(--ws-text);
@@ -266,7 +284,7 @@
   outline: none;
   border-color: var(--ws-accent);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ws-accent) 20%, transparent);
 }
 
 #ws-search-sidebar .ws-query-input::placeholder {
@@ -276,25 +294,8 @@
 #ws-search-sidebar .ws-btn-clear {
   position: absolute;
   top: 50%;
-  right: 6px;
+  right: 4px;
   transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--ws-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-#ws-search-sidebar .ws-btn-clear:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: var(--ws-text);
 }
 
 #ws-search-sidebar .ws-btn-clear[hidden] {
@@ -305,9 +306,10 @@
   background: var(--ws-accent);
   color: #fff;
   border: none;
-  border-radius: var(--ws-radius-sm);
-  corner-shape: squircle;
-  padding: 8px 14px;
+  border-radius: var(--ws-radius-capsule);
+  min-height: var(--ws-control-height);
+  padding: 0 16px;
+  box-sizing: border-box;
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -325,7 +327,6 @@
   margin: 0 16px 12px;
   background: var(--ws-surface);
   border-radius: var(--ws-radius-sm);
-  corner-shape: squircle;
   overflow: hidden;
   max-width: calc(100% - 32px);
 }
@@ -335,8 +336,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 12px 9px 14px;
-  cursor: default;
+  padding: 9px 14px;
+  cursor: pointer;
   border-bottom: 1px solid var(--ws-border);
   min-width: 0;
   max-width: 100%;
@@ -358,9 +359,10 @@
   gap: 8px;
 }
 
-#ws-search-sidebar .ws-toggle {
-  appearance: none !important;
+#ws-search-sidebar .toggle {
   -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
   display: inline-block !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -369,26 +371,19 @@
   height: 24px !important;
   min-width: 40px !important;
   min-height: 24px !important;
-  max-width: 40px !important;
-  max-height: 24px !important;
   margin: 0 !important;
   padding: 0 !important;
   border: none !important;
   background: #e9e9ea !important;
-  border-radius: var(--ws-radius-lg) !important;
-  corner-shape: squircle;
+  border-radius: 12px !important;
   cursor: pointer !important;
   flex: 0 0 40px !important;
   flex-shrink: 0 !important;
-  overflow: visible !important;
-  clip: auto !important;
-  clip-path: none !important;
-  transform: none !important;
-  transition: background 0.2s;
-  vertical-align: middle;
+  transition: background 0.2s, background-color 0.2s;
+  accent-color: var(--ws-user-accent, var(--accent, var(--ws-accent, #7c6cf0)));
 }
 
-#ws-search-sidebar .ws-toggle::after {
+#ws-search-sidebar .toggle::after {
   content: '' !important;
   display: block !important;
   position: absolute;
@@ -403,15 +398,15 @@
   pointer-events: none;
 }
 
-#ws-search-sidebar .ws-toggle.ws-toggle-on {
-  background: #34c759 !important;
+#ws-search-sidebar .toggle:checked {
+  background-color: var(--ws-user-accent, var(--accent, var(--ws-accent, #7c6cf0))) !important;
 }
 
-#ws-search-sidebar .ws-toggle.ws-toggle-on::after {
+#ws-search-sidebar .toggle:checked::after {
   transform: translateX(16px);
 }
 
-#ws-search-sidebar .ws-toggle:focus-visible {
+#ws-search-sidebar .toggle:focus-visible {
   outline: 2px solid var(--ws-accent);
   outline-offset: 2px;
 }
@@ -425,28 +420,15 @@
 }
 
 #ws-search-sidebar .ws-btn-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--ws-surface);
-  border: 1px solid var(--ws-border);
-  border-radius: var(--ws-radius-sm);
-  corner-shape: squircle;
-  color: var(--ws-text);
-  cursor: pointer;
-  padding: 0;
-  transition: background 0.15s, opacity 0.15s;
+  flex-shrink: 0;
 }
 
-#ws-search-sidebar .ws-btn-nav:hover:not(:disabled) {
-  background: #ebebed;
+#ws-search-sidebar .ws-btn-nav:hover:not(:disabled) .icon-chip {
+  color: var(--ws-icon-chip-accent);
 }
 
-#ws-search-sidebar .ws-btn-nav:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+#ws-search-sidebar .ws-btn-nav:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 #ws-search-sidebar .ws-counter {
@@ -492,7 +474,6 @@
   padding: 8px 10px;
   border: 1px solid var(--ws-border);
   border-radius: var(--ws-radius-sm);
-  corner-shape: squircle;
   background: var(--ws-surface);
   color: var(--ws-text);
   font: inherit;
@@ -502,8 +483,12 @@
 }
 
 #ws-search-sidebar .ws-btn-reader:hover {
-  background: rgba(0, 122, 255, 0.08);
-  border-color: rgba(0, 122, 255, 0.25);
+  background: color-mix(in srgb, var(--ws-accent) 8%, var(--ws-surface));
+  border-color: color-mix(in srgb, var(--ws-accent) 25%, var(--ws-border));
+}
+
+#ws-search-sidebar .ws-btn-reader:hover .icon-chip {
+  color: var(--ws-icon-chip-accent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -513,6 +498,8 @@
     --ws-text-secondary: #98989d;
     --ws-border: rgba(255, 255, 255, 0.12);
     --ws-surface: #2c2c2e;
+    --ws-icon-chip-bg: rgba(255, 255, 255, 0.08);
+    --ws-icon-chip-fg: #a8b0c0;
     color-scheme: dark;
   }
 
@@ -532,19 +519,11 @@
     background: #3a3a3c;
   }
 
-  #ws-search-sidebar .ws-btn-nav:hover:not(:disabled) {
-    background: #3a3a3c;
-  }
-
-  #ws-search-sidebar .ws-btn-clear:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  #ws-search-sidebar .ws-toggle {
+  #ws-search-sidebar .toggle {
     background: #48484a !important;
   }
 
-  #ws-search-sidebar .ws-toggle.ws-toggle-on {
-    background: #34c759 !important;
+  #ws-search-sidebar .toggle:checked {
+    background-color: var(--ws-user-accent, var(--accent, var(--ws-accent, #7c6cf0))) !important;
   }
 }

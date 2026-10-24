@@ -2,6 +2,7 @@
   display: block;
   flex-shrink: 0;
   pointer-events: none;
+  vector-effect: non-scaling-stroke;
 }
 
 button .ws-icon,
@@ -12,4 +13,38 @@ button .ws-icon,
 .ws-icon-inline {
   display: inline-block;
   vertical-align: -0.15em;
+}
+
+/* Light circular badge; accent = icon stroke color only */
+.icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ws-icon-chip-bg);
+  color: var(--ws-icon-chip-fg);
+  flex-shrink: 0;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.icon-chip-sm {
+  width: 28px;
+  height: 28px;
+}
+
+.icon-chip-xs {
+  width: 22px;
+  height: 22px;
+}
+
+.icon-chip-accent {
+  color: var(--ws-icon-chip-accent);
+  border-radius: var(--ws-radius-action-active, 14px);
+}
+
+button:hover:not(:disabled) > .icon-chip,
+.icon-chip-btn:hover:not(:disabled) .icon-chip {
+  background: color-mix(in srgb, var(--ws-icon-chip-bg) 70%, #000 4%);
 }

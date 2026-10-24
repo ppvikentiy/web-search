@@ -138,15 +138,55 @@ globalThis.WSAnnotationPill = (() => {
 
 
 
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+      return false;
+    }
+  }
+
+  function finishPanelClose() {
+    if (!panelEl || panelOpen) return;
+    panelEl.hidden = true;
+  }
+
   function setPanelOpen(open) {
 
     panelOpen = open;
 
     if (!panelEl || !btnToggle) return;
 
+    clearTimeout(panelEl._wsPanelCloseTimer);
+    panelEl.removeEventListener('transitionend', panelEl._wsPanelOnEnd);
 
-
-    panelEl.hidden = !open;
+    if (open) {
+      panelEl.hidden = false;
+      panelEl.setAttribute('aria-hidden', 'false');
+      if (prefersReducedMotion()) {
+        panelEl.classList.add('ws-pill-panel-open');
+      } else {
+        panelEl.classList.remove('ws-pill-panel-open');
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            panelEl.classList.add('ws-pill-panel-open');
+          });
+        });
+      }
+    } else {
+      panelEl.setAttribute('aria-hidden', 'true');
+      panelEl.classList.remove('ws-pill-panel-open');
+      if (prefersReducedMotion()) {
+        finishPanelClose();
+      } else {
+        panelEl._wsPanelOnEnd = (e) => {
+          if (e.target !== panelEl) return;
+          finishPanelClose();
+        };
+        panelEl.addEventListener('transitionend', panelEl._wsPanelOnEnd);
+        panelEl._wsPanelCloseTimer = setTimeout(finishPanelClose, 380);
+      }
+    }
 
     btnToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 
@@ -306,18 +346,26 @@ globalThis.WSAnnotationPill = (() => {
 
 
 
+    const panelInner = document.createElement('div');
+
+    panelInner.className = 'ws-pill-panel-inner';
+
     listEl = document.createElement('div');
 
     listEl.className = 'ws-pill-list';
 
-    panelEl.appendChild(listEl);
+    panelInner.appendChild(listEl);
+
+    panelEl.appendChild(panelInner);
 
 
 
     root.append(barEl, panelEl);
     WSDomUtils.decorateExtensionUi?.(root);
+    globalThis.WSAnnotations?.applyPillThemeToElement?.(root);
 
     document.documentElement.appendChild(root);
+    root.hidden = true;
 
 
 
@@ -537,6 +585,8 @@ globalThis.WSAnnotationPill = (() => {
 
     root.hidden = false;
 
+    globalThis.WSAnnotations?.applyPillThemeToElement?.(root);
+
     applySavedPosition();
 
   }
@@ -595,6 +645,7 @@ globalThis.WSAnnotationPill = (() => {
 
   function showMessage(text) {
     if (!root) buildPill();
+    if (root.hidden) return;
     let status = root.querySelector('.ws-pill-status');
     if (!status) {
       status = document.createElement('p');
@@ -658,6 +709,8 @@ globalThis.WSAnnotationPill = (() => {
     show,
 
     hide,
+
+    setPanelOpen,
 
     updateCounter,
 
